@@ -28,7 +28,7 @@ while(true) {
 
         $task = $di->get($payload['name']);
 
-        $task->execute($payload['payload']);
+        $task->execute($payload);
 
         $job->delete();
     }

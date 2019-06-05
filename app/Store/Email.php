@@ -3,10 +3,14 @@
 namespace App\Store;
 
 use Phalcon\Mvc\Model;
+use Ramsey\Uuid\Uuid;
+use Ramsey\Uuid\UuidInterface;
 
 class Email extends Model
 {
     protected $id;
+
+    protected $uuid;
 
     protected $userId;
 
@@ -14,10 +18,10 @@ class Email extends Model
 
     protected $email;
 
-    public static function fromArray(int $userId, int $version, string $email) : self
+    public static function with(UuidInterface $uuid, int $userId, int $version, string $email): self
     {
         $model = new self();
-
+        $model->uuid = $uuid;
         $model->userId = $userId;
         $model->version = $version;
         $model->email = $email;
@@ -34,6 +38,7 @@ class Email extends Model
     {
         return [
             'id' => 'id',
+            'uuid' => 'uuid',
             'user_id' => 'userId',
             'version' => 'version',
             'email' => 'email'

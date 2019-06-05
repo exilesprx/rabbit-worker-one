@@ -8,6 +8,7 @@ use App\Store\Email;
 use Phalcon\Events\Event;
 use Phalcon\Logger\Adapter\File as Logger;
 use Phalcon\Mvc\User\Plugin;
+use Ramsey\Uuid\Uuid;
 
 class BasicTaskListener extends Plugin
 {
@@ -26,19 +27,18 @@ class BasicTaskListener extends Plugin
 
         $email = $this->initializeEmail($payload);
 
-        $this->logger->info($email->readAttribute('user_id'));
-
         $email->save();
 
         $this->logger->info( " [x] Done");
     }
 
-    private function initializeEmail(array $payload) : Email
+    private function initializeEmail(array $data) : Email
     {
-        return Email::fromArray(
-            $payload['user_id'],
-            $payload['version'],
-            $payload['email']
+        return Email::with(
+            Uuid::fromString($data['uuid']),
+            $data['payload']['user_id'],
+            $data['payload']['version'],
+            $data['payload']['email']
         );
     }
 }

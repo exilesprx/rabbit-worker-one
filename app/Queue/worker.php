@@ -5,7 +5,9 @@ namespace App\Queue;
 require_once __DIR__ . '/../../vendor/autoload.php';
 
 use App\Providers\ServiceProvider;
+use App\tasks\TaskContract;
 use Phalcon\Di\FactoryDefault;
+use Phalcon\DiInterface;
 use Phalcon\Queue\Beanstalk;
 
 $di = new FactoryDefault();
@@ -22,11 +24,16 @@ $queue = new Beanstalk(
 
 $queue->connect();
 
+function getTask(DiInterface $di, string $name) : TaskContract
+{
+    return $di->get($name);
+}
+
 while(true) {
     while (($job = $queue->peekReady()) !== false) {
         $payload = json_decode($job->getBody(), true);
 
-        $task = $di->get($payload['name']);
+        $task = getTask($di, $payload['name']);
 
         $task->execute($payload);
 

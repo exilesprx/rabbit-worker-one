@@ -6,8 +6,9 @@ use App\models\User;
 use Phalcon\Events\EventsAwareInterface;
 use Phalcon\Events\ManagerInterface;
 
-class UpdateUserEmail implements EventsAwareInterface
+class UpdateUserEmail implements EventsAwareInterface, TaskContract
 {
+    /** @var ManagerInterface $manager */
     protected $manager;
 
     /**

@@ -17,7 +17,7 @@ use Phalcon\Db\Adapter\Pdo\Mysql;
 
 class ServiceProvider implements ServiceProviderInterface
 {
-    /** @var DiInterface */
+    /** @var DiInterface $di */
     protected $di;
 
     /**

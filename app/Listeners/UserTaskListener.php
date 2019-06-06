@@ -10,7 +10,7 @@ use Phalcon\Logger\Adapter\File as Logger;
 use Phalcon\Mvc\User\Plugin;
 use Ramsey\Uuid\Uuid;
 
-class BasicTaskListener extends Plugin
+class UserTaskListener extends Plugin
 {
     protected $logger;
 
@@ -19,20 +19,20 @@ class BasicTaskListener extends Plugin
         $this->logger = $logger;
     }
 
-    public function handle(Event $event, $task)
+    public function emailUpdated(Event $event, $task)
     {
         $payload = $event->getData();
 
         $this->logger->info(' [x] Received ' . json_encode($payload));
 
-        $email = $this->initializeEmail($payload);
+        $email = $this->initializeEmailStore($payload);
 
         $email->save();
 
         $this->logger->info( " [x] Done");
     }
 
-    private function initializeEmail(array $data) : Email
+    private function initializeEmailStore(array $data) : Email
     {
         return Email::with(
             Uuid::fromString($data['uuid']),

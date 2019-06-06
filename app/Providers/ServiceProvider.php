@@ -5,9 +5,10 @@ namespace App\Providers;
 define('BASE_PATH', dirname(__DIR__));
 define('APP_PATH', BASE_PATH . '');
 
-use App\Tasks\BasicTask;
-use App\Listeners\BasicTaskListener;
+use App\Tasks\UpdateUserEmail;
+use App\Listeners\UserTaskListener;
 use Phalcon\Di\ServiceProviderInterface;
+use Phalcon\DiInterface;
 use Phalcon\Events\Manager as EventsManager;
 use Phalcon\Logger\Adapter\File;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
@@ -16,6 +17,7 @@ use Phalcon\Db\Adapter\Pdo\Mysql;
 
 class ServiceProvider implements ServiceProviderInterface
 {
+    /** @var DiInterface */
     protected $di;
 
     /**
@@ -23,7 +25,7 @@ class ServiceProvider implements ServiceProviderInterface
      *
      * @param \Phalcon\DiInterface $di
      */
-    public function register(\Phalcon\DiInterface $di)
+    public function register(DiInterface $di)
     {
         $this->di = $di;
 
@@ -69,9 +71,9 @@ class ServiceProvider implements ServiceProviderInterface
         $eventsManager = $this->getEventsManager();
 
         $this->di->set(
-            'basic.task',
+            'user.updated.email',
             function() use($eventsManager) {
-                $task = new BasicTask();
+                $task = new UpdateUserEmail();
 
                 $task->setEventsManager($eventsManager);
 
@@ -87,8 +89,8 @@ class ServiceProvider implements ServiceProviderInterface
         );
 
         $eventsManager->attach(
-            'basic-task',
-            new BasicTaskListener(
+            'user-update',
+            new UserTaskListener(
                 $this->di->getShared('logger')
             )
         );

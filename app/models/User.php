@@ -2,9 +2,7 @@
 
 namespace App\models;
 
-use Phalcon\Mvc\Model;
-
-class User extends Model
+class User extends BaseModel
 {
     protected $id;
 
@@ -21,10 +19,5 @@ class User extends Model
         $model->version = $version;
 
         return $model;
-    }
-
-    public function onConstruct()
-    {
-        $this->setSource('users');
     }
 }

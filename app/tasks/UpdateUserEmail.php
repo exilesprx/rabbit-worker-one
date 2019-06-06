@@ -1,14 +1,12 @@
 <?php
 
-
 namespace App\Tasks;
-
 
 use App\models\User;
 use Phalcon\Events\EventsAwareInterface;
 use Phalcon\Events\ManagerInterface;
 
-class BasicTask implements EventsAwareInterface
+class UpdateUserEmail implements EventsAwareInterface
 {
     protected $manager;
 
@@ -27,7 +25,7 @@ class BasicTask implements EventsAwareInterface
      *
      * @return ManagerInterface
      */
-    public function getEventsManager() : ManagerInterface
+    public function getEventsManager(): ManagerInterface
     {
         return $this->manager;
     }
@@ -44,11 +42,6 @@ class BasicTask implements EventsAwareInterface
             ]
         );
 
-        if (!$user) {
-            $user = User::with($email, $version);
-            $user->save();
-        }
-
         $user->update(
             [
                 'email' => $email,
@@ -56,6 +49,6 @@ class BasicTask implements EventsAwareInterface
             ]
         );
 
-        $this->manager->fire('basic-task:handle', $this, $data);
+        $this->manager->fire('user-update:emailUpdated', $this, $data);
     }
 }

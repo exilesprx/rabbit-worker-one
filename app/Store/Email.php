@@ -2,11 +2,10 @@
 
 namespace App\Store;
 
-use Phalcon\Mvc\Model;
-use Ramsey\Uuid\Uuid;
+use App\models\BaseModel;
 use Ramsey\Uuid\UuidInterface;
 
-class Email extends Model
+class Email extends BaseModel
 {
     protected $id;
 
@@ -27,11 +26,6 @@ class Email extends Model
         $model->email = $email;
 
         return $model;
-    }
-
-    public function onConstruct()
-    {
-        $this->setSource('emails');
     }
 
     public function columnMap()

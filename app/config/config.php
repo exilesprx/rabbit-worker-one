@@ -21,5 +21,9 @@ return new \Phalcon\Config([
         'migrationsDir'  => APP_PATH . '/migrations/',
         'viewsDir'       => APP_PATH . '/views/',
         'baseUri'        => '/phalcon-one/',
+    ],
+
+    'listeners' => [
+        \App\Listeners\UserTaskListener::class
     ]
 ]);

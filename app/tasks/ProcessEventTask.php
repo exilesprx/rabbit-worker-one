@@ -2,14 +2,25 @@
 
 namespace App\Tasks;
 
-use App\models\User;
+use App\events\EventContract;
+use Phalcon\DiInterface;
 use Phalcon\Events\EventsAwareInterface;
 use Phalcon\Events\ManagerInterface;
 
-class UpdateUserEmail implements EventsAwareInterface, TaskContract
+class ProcessEventTask implements EventsAwareInterface, TaskContract
 {
     /** @var ManagerInterface $manager */
     protected $manager;
+
+    protected $di;
+
+    /**
+     * @param DiInterface $di
+     */
+    public function __construct(DiInterface $di)
+    {
+        $this->di = $di;
+    }
 
     /**
      * Sets the tasks manager
@@ -33,23 +44,15 @@ class UpdateUserEmail implements EventsAwareInterface, TaskContract
 
     public function execute(array $data)
     {
-        $id = $data['payload']['user_id'];
-        $email = $data['payload']['email'];
-        $version = $data['payload']['version'];
+        $event = $this->getEvent($data);
 
-        $user = User::findFirst(
-            [
-                'id' => $id
-            ]
-        );
+        $this->manager->fire($event->getEventType(), $this, $data);
+    }
 
-        $user->update(
-            [
-                'email' => $email,
-                'version' => $version
-            ]
-        );
+    public function getEvent(array $data) : EventContract
+    {
+        $name = $data['name'];
 
-        $this->manager->fire('user-update:emailUpdated', $this, $data);
+        return $this->di->get($name, [$data]);
     }
 }

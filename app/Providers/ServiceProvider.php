@@ -5,8 +5,9 @@ namespace App\Providers;
 define('BASE_PATH', dirname(__DIR__));
 define('APP_PATH', BASE_PATH . '');
 
-use App\Tasks\UpdateUserEmail;
+use App\events\UserUpdatedEmail;
 use App\Listeners\UserTaskListener;
+use App\Tasks\ProcessEventTask;
 use Phalcon\Di\ServiceProviderInterface;
 use Phalcon\DiInterface;
 use Phalcon\Events\Manager as EventsManager;
@@ -33,8 +34,9 @@ class ServiceProvider implements ServiceProviderInterface
             return include APP_PATH . "/config/config.php";
         });
 
-        $this->di->setShared('db', function () use ($di) {
-            $config = $di->get('config');
+        $config = $di->get('config');
+
+        $this->di->setShared('db', function () use ($config) {
 
             $class = 'Phalcon\Db\Adapter\Pdo\\' . $config->database->adapter;
             $params = [
@@ -62,6 +64,15 @@ class ServiceProvider implements ServiceProviderInterface
         );
 
         $this->di->setShared(
+            UserTaskListener::class,
+            function() use($di) {
+                return new UserTaskListener(
+                    $di->get('logger')
+                );
+            }
+        );
+
+        $this->di->setShared(
             'event-manager',
             function() {
                 return new EventsManager();
@@ -72,8 +83,13 @@ class ServiceProvider implements ServiceProviderInterface
 
         $this->di->set(
             'user.updated.email',
-            function() use($eventsManager) {
-                $task = new UpdateUserEmail();
+            UserUpdatedEmail::class
+        );
+
+        $this->di->set(
+            'process-event-task',
+            function() use($eventsManager, $di) {
+                $task = new ProcessEventTask($di);
 
                 $task->setEventsManager($eventsManager);
 
@@ -88,16 +104,26 @@ class ServiceProvider implements ServiceProviderInterface
             }
         );
 
-        $eventsManager->attach(
-            'user-update',
-            new UserTaskListener(
-                $this->di->getShared('logger')
-            )
-        );
+        $this->registerListeners($eventsManager, $di, (array)$config->listeners);
     }
 
     private function getEventsManager() : EventsManager
     {
         return $this->di->getShared('event-manager');
+    }
+
+    private function registerListeners(EventsManager $manager, DiInterface $di, array $listeners)
+    {
+        foreach($listeners as $listener) {
+
+            $listener = $di->get($listener);
+
+            foreach($listener::getEvents() as $event) {
+                $manager->attach(
+                    $event,
+                    $listener
+                );
+            }
+        }
     }
 }

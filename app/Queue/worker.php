@@ -6,6 +6,9 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 
 use App\Providers\ServiceProvider;
 use App\tasks\TaskContract;
+use Monolog\Formatter\LogstashFormatter;
+use Monolog\Handler\SocketHandler;
+use Monolog\Logger;
 use Phalcon\Di\FactoryDefault;
 use Phalcon\DiInterface;
 use Phalcon\Queue\Beanstalk;
@@ -14,6 +17,16 @@ $di = new FactoryDefault();
 $provider = new ServiceProvider();
 
 $provider->register($di);
+
+$logger = new Logger("phalcon-one-worker");
+
+$handler = new SocketHandler("logstash:5055");
+
+$formatter = new LogstashFormatter("phalcon");
+
+$handler->setFormatter($formatter);
+
+$logger->pushHandler($handler);
 
 $queue = new Beanstalk(
     [
@@ -24,6 +37,8 @@ $queue = new Beanstalk(
 
 $queue->connect();
 
+$queue->choose("phalcon");
+
 function getTask(DiInterface $di, string $name) : TaskContract
 {
     return $di->get($name);
@@ -31,16 +46,20 @@ function getTask(DiInterface $di, string $name) : TaskContract
 
 while(true) {
     while (($job = $queue->peekReady()) !== false) {
-        $payload = json_decode($job->getBody(), true);
+        $body = $job->getBody();
 
-        $task = getTask($di, $payload['name']);
+        $payload = json_decode($body, true);
+
+        $logger->info("Worked-Event", $payload);
+
+        $logger->close();
+
+        $task = getTask($di, "process-event-task");
 
         $task->execute($payload);
 
         $job->delete();
     }
-
-    usleep(100);
 }
 
 $queue->disconnect();

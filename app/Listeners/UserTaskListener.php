@@ -1,18 +1,21 @@
 <?php
 
-
 namespace App\Listeners;
 
-
+use App\events\UserUpdatedEmail;
+use App\models\User;
 use App\Store\Email;
 use Phalcon\Events\Event;
 use Phalcon\Logger\Adapter\File as Logger;
-use Phalcon\Mvc\User\Plugin;
 use Ramsey\Uuid\Uuid;
 
-class UserTaskListener extends Plugin
+class UserTaskListener extends Listener
 {
     protected $logger;
+
+    protected static $events = [
+        UserUpdatedEmail::class
+    ];
 
     public function __construct(Logger $logger)
     {
@@ -21,6 +24,25 @@ class UserTaskListener extends Plugin
 
     public function emailUpdated(Event $event, $task)
     {
+        $data = $event->getData();
+
+        $id = $data['payload']['user_id'];
+        $email = $data['payload']['email'];
+        $version = $data['payload']['version'];
+
+        $user = User::findFirst(
+            [
+                'id' => $id
+            ]
+        );
+
+        $user->update(
+            [
+                'email' => $email,
+                'version' => $version
+            ]
+        );
+
         $payload = $event->getData();
 
         $this->logger->info(' [x] Received ' . json_encode($payload));

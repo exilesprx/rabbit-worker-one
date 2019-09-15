@@ -22,7 +22,7 @@ class UserTaskListener extends Listener
         $this->logger = $logger;
     }
 
-    public function emailUpdated(Event $event, $task)
+    public function onUserUpdatedEmail(Event $event, $task)
     {
         $data = $event->getData();
 

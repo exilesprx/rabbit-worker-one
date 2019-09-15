@@ -5,6 +5,7 @@ namespace App\Providers;
 define('BASE_PATH', dirname(__DIR__));
 define('APP_PATH', BASE_PATH . '');
 
+use App\Events\EventContract;
 use App\events\UserUpdatedEmail;
 use App\Listeners\UserTaskListener;
 use App\Tasks\ProcessEventTask;
@@ -120,10 +121,15 @@ class ServiceProvider implements ServiceProviderInterface
 
             foreach($listener::getEvents() as $event) {
                 $manager->attach(
-                    $event,
+                    $this->getEventName($event),
                     $listener
                 );
             }
         }
+    }
+
+    private function getEventName(string $event) : string
+    {
+        return ($event)::getBaseEventType();
     }
 }

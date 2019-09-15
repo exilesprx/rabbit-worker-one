@@ -6,5 +6,7 @@ interface EventContract
 {
     public function getData() : array;
 
-    public function getEventType() : string;
+    public static function getEventType() : string;
+
+    public static function getBaseEventType() : string;
 }

@@ -6,9 +6,14 @@ abstract class UserEvent implements EventContract
 {
     private static $baseEventType = "user-update";
 
-    public function getEventType() : string
+    public static function getBaseEventType() : string
     {
-        return sprintf("%s:%s", self::$baseEventType, static::getEventName());
+        return self::$baseEventType;
+    }
+
+    public static function getEventType() : string
+    {
+        return sprintf("%s:on%s", self::$baseEventType, static::getEventName());
     }
 
     private static function getEventName() : string

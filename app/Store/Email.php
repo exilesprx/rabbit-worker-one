@@ -17,6 +17,8 @@ class Email extends BaseModel
 
     protected $email;
 
+    protected $createdAt;
+
     public static function with(UuidInterface $uuid, int $userId, int $version, string $email): self
     {
         $model = new self();
@@ -24,6 +26,7 @@ class Email extends BaseModel
         $model->userId = $userId;
         $model->version = $version;
         $model->email = $email;
+        $model->createdAt = (new \DateTime())->format("Y-m-d H:i:s");
 
         return $model;
     }
@@ -35,7 +38,8 @@ class Email extends BaseModel
             'uuid' => 'uuid',
             'user_id' => 'userId',
             'version' => 'version',
-            'email' => 'email'
+            'email' => 'email',
+            'created_at' => 'createdAt'
         ];
     }
 }

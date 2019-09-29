@@ -4,9 +4,9 @@ namespace App\models;
 
 class User extends BaseModel
 {
-    protected $id;
+    use Timestampable, Versioned;
 
-    protected $version;
+    protected $id;
 
     protected $email;
 

@@ -4,6 +4,7 @@ namespace App\Amqp;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
+use App\Valueobjects\LowPriorityJob;
 use Monolog\Formatter\LogstashFormatter;
 use Monolog\Handler\SocketHandler;
 use Monolog\Logger;
@@ -53,13 +54,18 @@ $callback = function ($msg) use($di, $queue, $log) {
 
     $queue->choose("phalcon");
 
+    $payload = json_decode($msg->body, true);
+
     $queue->put(
-        $msg->body
+        $msg->body,
+        [
+            'priority' => LowPriorityJob::getValue()
+        ]
     );
 
     $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
 
-    $log->info("Consumed-Event", json_decode($msg->body, true));
+    $log->info("Consumed-Event", $payload);
 
     $log->close();
 };

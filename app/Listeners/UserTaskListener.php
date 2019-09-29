@@ -3,6 +3,7 @@
 namespace App\Listeners;
 
 use App\events\UserUpdatedEmail;
+use App\Exceptions\OutOfOrderException;
 use App\models\User;
 use App\Store\Email;
 use Phalcon\Events\Event;
@@ -36,6 +37,10 @@ class UserTaskListener extends Listener
             ]
         );
 
+        if (!$this->isNextVersion($user, $version)) {
+            throw OutOfOrderException::job($user->getVersion(), $version);
+        }
+
         $user->update(
             [
                 'email' => $email,
@@ -62,5 +67,13 @@ class UserTaskListener extends Listener
             $data['payload']['version'],
             $data['payload']['email']
         );
+    }
+
+    private function isNextVersion(User $user, int $nextVersion) : bool
+    {
+        $this->logger->info(sprintf("User version %d next version %d", $user->getVersion(), $nextVersion));
+
+        return ($nextVersion === 1 && $user->getVersion() === 1)
+            || $user->getVersion() + 1 === $nextVersion;
     }
 }

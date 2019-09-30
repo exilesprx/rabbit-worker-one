@@ -1,6 +1,6 @@
 <?php
 
-namespace App\models;
+namespace App\Models;
 
 class User extends BaseModel
 {
@@ -19,5 +19,10 @@ class User extends BaseModel
         $model->version = $version;
 
         return $model;
+    }
+
+    public function getId() : int
+    {
+        return $this->id;
     }
 }

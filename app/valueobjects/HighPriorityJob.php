@@ -1,9 +1,8 @@
 <?php
 
+namespace App\ValueObjects;
 
-namespace App\Valueobjects;
-
-class HighPriorityJob
+class HighPriorityJob implements JobPriority
 {
     private static $value = 1;
 

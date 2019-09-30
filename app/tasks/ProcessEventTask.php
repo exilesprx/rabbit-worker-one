@@ -2,7 +2,7 @@
 
 namespace App\Tasks;
 
-use App\events\EventContract;
+use App\Events\EventContract;
 use Phalcon\DiInterface;
 use Phalcon\Events\EventsAwareInterface;
 use Phalcon\Events\ManagerInterface;

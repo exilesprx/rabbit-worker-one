@@ -2,9 +2,9 @@
 
 namespace App\Listeners;
 
-use App\events\UserUpdatedEmail;
+use App\Events\UserUpdatedEmail;
 use App\Exceptions\OutOfOrderException;
-use App\models\User;
+use App\Models\User;
 use App\Store\Email;
 use Phalcon\Events\Event;
 use Phalcon\Logger\Adapter\File as Logger;
@@ -31,6 +31,7 @@ class UserTaskListener extends Listener
         $email = $data['payload']['email'];
         $version = $data['payload']['version'];
 
+        /** @var User $user */
         $user = User::findFirst(
             [
                 'id' => $id
@@ -40,7 +41,7 @@ class UserTaskListener extends Listener
         if (!$this->isNextVersion($user, $version)) {
             throw OutOfOrderException::job($user->getVersion(), $version);
         }
-
+        $this->logger->critical(sprintf("Updated user version to %d", $version));
         $user->update(
             [
                 'email' => $email,
@@ -50,17 +51,15 @@ class UserTaskListener extends Listener
 
         $payload = $event->getData();
 
-        $this->logger->info(' [x] Received ' . json_encode($payload));
-
         $email = $this->initializeEmailStore($payload);
 
         $email->save();
-
-        $this->logger->info( " [x] Done");
     }
 
     private function initializeEmailStore(array $data) : Email
     {
+        $this->logger->alert(sprintf("Inserting email with version %d", $data['payload']['version']));
+
         return Email::with(
             Uuid::fromString($data['uuid']),
             $data['payload']['user_id'],
@@ -71,8 +70,6 @@ class UserTaskListener extends Listener
 
     private function isNextVersion(User $user, int $nextVersion) : bool
     {
-        $this->logger->info(sprintf("User version %d next version %d", $user->getVersion(), $nextVersion));
-
         return ($nextVersion === 1 && $user->getVersion() === 1)
             || $user->getVersion() + 1 === $nextVersion;
     }

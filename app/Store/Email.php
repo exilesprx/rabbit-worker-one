@@ -2,18 +2,19 @@
 
 namespace App\Store;
 
-use App\models\BaseModel;
+use App\Models\BaseModel;
+use App\Models\Versioned;
 use Ramsey\Uuid\UuidInterface;
 
 class Email extends BaseModel
 {
+    use Versioned;
+
     protected $id;
 
     protected $uuid;
 
     protected $userId;
-
-    protected $version;
 
     protected $email;
 

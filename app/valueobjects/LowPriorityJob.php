@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Valueobjects;
+namespace App\ValueObjects;
 
-class LowPriorityJob
+class LowPriorityJob implements JobPriority
 {
-    private static $value = 1000;
+    private static $value = 10000;
 
     public static function getValue() : int
     {

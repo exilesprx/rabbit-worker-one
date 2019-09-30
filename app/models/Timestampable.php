@@ -1,7 +1,6 @@
 <?php
 
-
-namespace App\models;
+namespace App\Models;
 
 trait Timestampable
 {

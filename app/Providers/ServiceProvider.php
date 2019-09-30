@@ -5,14 +5,21 @@ namespace App\Providers;
 define('BASE_PATH', dirname(__DIR__));
 define('APP_PATH', BASE_PATH . '');
 
-use App\Events\EventContract;
-use App\events\UserUpdatedEmail;
+use App\Amqp\Worker;
+use App\Events\UserUpdatedEmail;
 use App\Listeners\UserTaskListener;
+use App\Loggers\LogStashLogger;
+use App\Queue\Queue;
 use App\Tasks\ProcessEventTask;
+use App\Tasks\TaskConductor;
+use Monolog\Formatter\LogstashFormatter;
+use Monolog\Handler\SocketHandler;
+use Monolog\Logger;
 use Phalcon\Di\ServiceProviderInterface;
 use Phalcon\DiInterface;
 use Phalcon\Events\Manager as EventsManager;
 use Phalcon\Logger\Adapter\File;
+use Phalcon\Queue\Beanstalk;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use Phalcon\Db\Adapter\Pdo;
 use Phalcon\Db\Adapter\Pdo\Mysql;
@@ -31,11 +38,11 @@ class ServiceProvider implements ServiceProviderInterface
     {
         $this->di = $di;
 
-        $this->di->setShared('config', function () {
-            return include APP_PATH . "/config/config.php";
+        $this->di->setShared('Config', function () {
+            return include APP_PATH . "/Config/config.php";
         });
 
-        $config = $di->get('config');
+        $config = $di->get('Config');
 
         $this->di->setShared('db', function () use ($config) {
 
@@ -65,6 +72,17 @@ class ServiceProvider implements ServiceProviderInterface
         );
 
         $this->di->setShared(
+            'logstash-log',
+            function() use($config) {
+                return new LogStashLogger(
+                    new Logger($config->logging->logstash->name),
+                    new SocketHandler(sprintf("%s:%d", $config->logging->logstash->host, $config->logging->logstash->port)),
+                    new LogstashFormatter($config->logging->logstash->application)
+                );
+            }
+        );
+
+        $this->di->setShared(
             UserTaskListener::class,
             function() use($di) {
                 return new UserTaskListener(
@@ -87,21 +105,62 @@ class ServiceProvider implements ServiceProviderInterface
             UserUpdatedEmail::class
         );
 
-        $this->di->set(
-            'process-event-task',
-            function() use($eventsManager, $di) {
+        $this->di->setShared(
+            'task-conductor',
+            function() use($di, $eventsManager) {
                 $task = new ProcessEventTask($di);
 
                 $task->setEventsManager($eventsManager);
 
-                return $task;
+                return new TaskConductor($task);
             }
         );
 
         $this->di->setShared(
-            'amqp',
-            function() {
-                return $connection = new AMQPStreamConnection('rabbitmq', 5672, 'guest', 'guest');
+            'queue',
+            function() use($di, $config) {
+                /** @var LogStashLogger $logstash */
+                $logstash = $di->getShared('logstash-log');
+
+                /** @var File $file */
+                $file = $di->getShared('logger');
+
+                /** @var TaskConductor $taskConductor */
+                $taskConductor = $di->getShared('task-conductor');
+
+                $beanstalk = new Beanstalk(
+                    [
+                        'host' => $config->queue->beanstalkd->host,
+                        'port' => $config->queue->beanstalkd->port
+                    ]
+                );
+
+                return new Queue($beanstalk, $taskConductor, $logstash, $file);
+            }
+        );
+
+        $this->di->setShared(
+            'amqp-worker',
+            function() use($di, $config) {
+                $host = $config->messaging->rabbitmq->host;
+                $port = $config->messaging->rabbitmq->port;
+                $user = $config->messaging->rabbitmq->user;
+                $password = $config->messaging->rabbitmq->password;
+
+                $connection = new AMQPStreamConnection($host, $port, $user, $password);
+
+                /** @var LogStashLogger $logstash */
+                $logstash = $di->getShared('logstash-log');
+
+                /** @var File $file */
+                $file = $di->getShared('logger');
+
+                return new Worker(
+                    $connection,
+                    $di->getShared('queue'),
+                    $logstash,
+                    $file
+                );
             }
         );
 

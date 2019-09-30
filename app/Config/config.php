@@ -17,13 +17,17 @@ return new \Phalcon\Config([
     ],
 
     'application' => [
-        'modelsDir'      => APP_PATH . '/models/',
-        'migrationsDir'  => APP_PATH . '/migrations/',
-        'viewsDir'       => APP_PATH . '/views/',
+        'modelsDir'      => APP_PATH . '/Models/',
+        'migrationsDir'  => APP_PATH . '/Migrations/',
+        'viewsDir'       => APP_PATH . '/Views/',
         'baseUri'        => '/phalcon-one/',
     ],
 
-    'listeners' => [
-        \App\Listeners\UserTaskListener::class
-    ]
+    'queue' => require_once(APP_PATH . '/Config/queue.php'),
+
+    'messaging' => require_once(APP_PATH . '/Config/messaging.php'),
+
+    'listeners' => require_once(APP_PATH . '/Config/listeners.php'),
+
+    'logging' => require_once(APP_PATH . '/Config/logging.php')
 ]);

@@ -73,6 +73,8 @@ class Queue
                  */
                 $job->bury(BuriedJobPriority::getValue($exception));
 
+                $this->file->critical(sprintf("Kicked job into buried queue with priority of %d", BuriedJobPriority::getValue($exception)));
+
                 continue;
             }
 

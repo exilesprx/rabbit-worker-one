@@ -13,6 +13,11 @@ abstract class ProcessHelper
         $this->arguments = getopt(implode("", self::getShortOpts()), self::getLongOpts());
     }
 
+    public static function getProcessId() : int
+    {
+        return (int)getmypid();
+    }
+
     protected static function getShortOpts() : array
     {
         return array_keys(static::$opts);

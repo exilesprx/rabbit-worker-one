@@ -2,7 +2,7 @@
 
 return [
     "beanstalkd" => [
-        "host" => "beanstalkd",
-        "port" => 11300
+        "host" => getenv('QUEUE_HOST'),
+        "port" => getenv('QUEUE_PORT')
     ]
 ];

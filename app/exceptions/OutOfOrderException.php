@@ -8,38 +8,26 @@ class OutOfOrderException extends Exception
 {
     private $currentVersion;
 
-    public function __construct(string $message, int $currentVersion)
+    private $receivedVersion;
+
+    public function __construct(string $message, int $currentVersion, int $receivedVersion)
     {
         parent::__construct($message, 0, null);
 
         $this->currentVersion = $currentVersion;
+
+        $this->receivedVersion = $receivedVersion;
     }
 
     public static function job(int $has, int $received) : self
     {
         $message = sprintf("The current job is out of order. Has: %d -- Wants: %d -- Received: %d", $has, $has + 1, $received);
 
-        return new self($message, $has);
-    }
-
-    /**
-     * @return int
-     */
-    public function getCurrentVersion(): int
-    {
-        return $this->currentVersion;
-    }
-
-    /**
-     * @return int
-     */
-    public function getNextVersion(): int
-    {
-        return $this->currentVersion + 1;
+        return new self($message, $has, $received);
     }
 
     public function getDifference() : int
     {
-        return $this->getNextVersion() - $this->currentVersion;
+        return abs($this->currentVersion - $this->receivedVersion);
     }
 }

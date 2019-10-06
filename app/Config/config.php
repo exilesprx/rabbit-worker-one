@@ -6,28 +6,19 @@
 defined('BASE_PATH') || define('BASE_PATH', getenv('BASE_PATH') ?: realpath(dirname(__FILE__) . '/../..'));
 defined('APP_PATH') || define('APP_PATH', BASE_PATH . '/app');
 
+$env = \Dotenv\Dotenv::create(dirname(BASE_PATH . "../"));
+$env->load();
+
 return new \Phalcon\Config([
-    'database' => [
-        'adapter'    => 'Mysql',
-        'host'       => 'mariadb',
-        'username'   => 'default',
-        'password'   => 'secret',
-        'dbname'     => 'default',
-        'charset'    => 'utf8',
-    ],
+    'database' => require_once('database.php'),
 
-    'application' => [
-        'modelsDir'      => APP_PATH . '/Models/',
-        'migrationsDir'  => APP_PATH . '/Migrations/',
-        'viewsDir'       => APP_PATH . '/Views/',
-        'baseUri'        => '/phalcon-one/',
-    ],
+    'application' => require_once('application.php'),
 
-    'queue' => require_once(APP_PATH . '/Config/queue.php'),
+    'queue' => require_once('queue.php'),
 
-    'messaging' => require_once(APP_PATH . '/Config/messaging.php'),
+    'messaging' => require_once('messaging.php'),
 
-    'listeners' => require_once(APP_PATH . '/Config/listeners.php'),
+    'listeners' => require_once('listeners.php'),
 
-    'logging' => require_once(APP_PATH . '/Config/logging.php')
+    'logging' => require_once('logging.php')
 ]);

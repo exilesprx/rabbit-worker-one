@@ -2,9 +2,13 @@
 
 return [
     'logstash' => [
-        "name" => "phalcon-one-worker",
-        "application" => "phalcon",
-        "host" => "logstash",
-        "port" => 5055
+        "name" => getenv('LOGSTASH_NAME'),
+        "host" => getenv('LOGSTASH_HOST'),
+        "port" => getenv('LOGSTASH_PORT')
+    ],
+
+    'file' => [
+        "name" => getenv('LOG_NAME'),
+        "path" => BASE_PATH . "/logs"
     ]
 ];

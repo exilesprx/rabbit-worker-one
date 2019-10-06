@@ -4,6 +4,7 @@ namespace App\Processes;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
+use App\Helpers\QueueProcessHelper;
 use App\Providers\ServiceProvider;
 use App\Queue\Queue;
 use App\ValueObjects\BeanstalkTube;
@@ -18,8 +19,9 @@ $provider->register($di);
 /** @var Queue $queue */
 $queue = $di->getShared('queue');
 
-// TODO: update this to pull the queue name from the args passed
-$queue->connect(new BeanstalkTube('phalcon'));
+$process = new QueueProcessHelper();
+
+$queue->connect(new BeanstalkTube($process->getTube()));
 
 //$queue->cleanupBuried();
 //$queue->cleanUpQueue();

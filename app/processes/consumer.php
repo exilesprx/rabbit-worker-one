@@ -5,6 +5,7 @@ namespace App\Processes;
 require_once __DIR__ . '/../../vendor/autoload.php';
 
 use App\Amqp\Worker;
+use App\Helpers\AmqpProcessHelper;
 use App\Providers\ServiceProvider;
 use App\ValueObjects\AmqpConsumerTag;
 use App\ValueObjects\AmqpDirectExchange;
@@ -23,14 +24,15 @@ $provider->register($di);
 /** @var Worker $amqp */
 $amqp = $di->getShared('amqp-worker');
 
+$process = new AmqpProcessHelper();
+
 $worker = new AmqpWorker(
-    new AmqpQueue('task_queue.one'),
-    new AmqpExchange('worker_one'),
+    new AmqpQueue($process->getQueue()),
+    new AmqpExchange($process->getExchange()),
     new AmqpDirectExchange(),
     new AmqpConsumerTag()
 );
 
-// TODO: Get queue name from args
-$amqp->work($worker, new BeanstalkTube('phalcon'));
+$amqp->work($worker, new BeanstalkTube($process->getTube()));
 
 $amqp->close();

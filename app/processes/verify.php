@@ -32,11 +32,14 @@ $emails->rewind();
 
 $version = 1;
 
+$incorrectVersions = 0;
+
 while ($emails->valid()) {
 
     $email = $emails->current();
 
     if ($email->getVersion() != $version) {
+        $incorrectVersions++;
         printf("Versions are not in order @ %d", $version);
         echo "\n";
     }
@@ -47,13 +50,10 @@ while ($emails->valid()) {
 }
 
 if ($email->getVersion() != $maxVersion || $user->getVersion() != $maxVersion) {
+    $incorrectVersions++;
     printf("Versions are not in order @ %d", $version);
     echo "\n";
 }
 
-// First Run: double consumer and single queue worker
-//      Total:  7413 email records, perfect order,
-//              7413 was the users last version
-
-// Second Run: double consumer and double queue worker
-//      Total:
+printf("There are a total of %d email events out of order", $incorrectVersions);
+echo "\n";

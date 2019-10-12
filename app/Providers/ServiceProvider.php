@@ -8,7 +8,9 @@ define('APP_PATH', BASE_PATH . '');
 use App\Amqp\Worker;
 use App\Events\UserUpdatedEmail;
 use App\Listeners\UserTaskListener;
+use App\Loggers\AmqpLogger;
 use App\Loggers\LogStashLogger;
+use App\Loggers\QueueLogger;
 use App\Queue\Queue;
 use App\Tasks\ProcessEventTask;
 use App\Tasks\TaskConductor;
@@ -65,12 +67,12 @@ class ServiceProvider implements ServiceProviderInterface
         });
 
         $this->di->setShared(
-            'logger', // File::class
+            File::class,
             function() use($config) {
-                $file = sprintf("%s/%s", $config->logging->file->path, $config->logging->file->name);
+                $file = sprintf("%s/%s", $config->path("logging.file.path"), $config->path("logging.file.name"));
 
                 if (! file_exists($file)) {
-                    mkdir($config->logging->file->path);
+                    mkdir($config->path("logging.file.path"));
                     touch($file);
                 }
 
@@ -79,10 +81,10 @@ class ServiceProvider implements ServiceProviderInterface
         );
 
         $this->di->setShared(
-            'logstash-log', // LogStashLogger::class
+            LogStashLogger::class,
             function() use($config) {
-                $name = $config->logging->logstash->name;
-                $connection = sprintf("%s:%d", $config->logging->logstash->host, $config->logging->logstash->port);
+                $name = $config->path("logging.logstash.name");
+                $connection = sprintf("%s:%d", $config->path("logging.logstash.host"), $config->path("logging.logstash.port"));
                 $type = $config->application->name;
 
                 return new LogStashLogger(
@@ -97,13 +99,13 @@ class ServiceProvider implements ServiceProviderInterface
             UserTaskListener::class,
             function() use($di) {
                 return new UserTaskListener(
-                    $di->get('logger') // File::class
+                    $di->get(File::class)
                 );
             }
         );
 
         $this->di->setShared(
-            'event-manager', // EventsManager::class
+            EventsManager::class,
             function() {
                 return new EventsManager();
             }
@@ -112,12 +114,12 @@ class ServiceProvider implements ServiceProviderInterface
         $eventsManager = $this->getEventsManager();
 
         $this->di->set(
-            'user.updated.email', //UserUpdatedEmail::getBaseEventType()
+            UserUpdatedEmail::getUblName(),
             UserUpdatedEmail::class
         );
 
         $this->di->setShared(
-            'task-conductor', // TaskConductor::class
+            TaskConductor::class,
             function() use($di, $eventsManager) {
                 $task = new ProcessEventTask($di);
 
@@ -128,49 +130,47 @@ class ServiceProvider implements ServiceProviderInterface
         );
 
         $this->di->setShared(
-            'queue', // Queue::class
+            Queue::class,
             function() use($di, $config) {
                 /** @var LogStashLogger $logstash */
-                $logstash = $di->getShared('logstash-log'); // LogStashLogger::class
+                $logstash = $di->getShared(LogStashLogger::class);
 
-                /** @var File $file */
-                $file = $di->getShared('logger'); // File::class
+                $logger = new QueueLogger($config);
 
                 /** @var TaskConductor $taskConductor */
-                $taskConductor = $di->getShared('task-conductor'); // TaskConductor::class
+                $taskConductor = $di->getShared(TaskConductor::class);
 
                 $beanstalk = new Beanstalk(
                     [
-                        'host' => $config->queue->beanstalkd->host,
-                        'port' => $config->queue->beanstalkd->port
+                        'host' => $config->path("queue.beanstalkd.host"),
+                        'port' => $config->path("queue.beanstalkd.port")
                     ]
                 );
 
-                return new Queue($beanstalk, $taskConductor, $logstash, $file);
+                return new Queue($beanstalk, $taskConductor, $logstash, $logger);
             }
         );
 
         $this->di->setShared(
-            'amqp-worker', // Worker::class
+            Worker::class,
             function() use($di, $config) {
-                $host = $config->messaging->rabbitmq->host;
-                $port = $config->messaging->rabbitmq->port;
-                $user = $config->messaging->rabbitmq->user;
-                $password = $config->messaging->rabbitmq->password;
+                $host = $config->path("messaging.rabbitmq.host");
+                $port = $config->path("messaging.rabbitmq.port");
+                $user = $config->path("messaging.rabbitmq.user");
+                $password = $config->path("messaging.rabbitmq.password");
 
                 $connection = new AMQPStreamConnection($host, $port, $user, $password);
 
                 /** @var LogStashLogger $logstash */
-                $logstash = $di->getShared('logstash-log'); // LogStashLogger::class
+                $logstash = $di->getShared(LogStashLogger::class);
 
-                /** @var File $file */
-                $file = $di->getShared('logger'); // File::class
+                $logger = new AmqpLogger($config);
 
                 return new Worker(
                     $connection,
-                    $di->getShared('queue'), // Queue::class
+                    $di->getShared(Queue::class),
                     $logstash,
-                    $file
+                    $logger
                 );
             }
         );
@@ -180,7 +180,7 @@ class ServiceProvider implements ServiceProviderInterface
 
     private function getEventsManager() : EventsManager
     {
-        return $this->di->getShared('event-manager'); // EventsManager::class
+        return $this->di->getShared(EventsManager::class);
     }
 
     private function registerListeners(EventsManager $manager, DiInterface $di, array $listeners)

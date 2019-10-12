@@ -5,7 +5,7 @@ namespace App\Processes;
 require_once __DIR__ . '/../../vendor/autoload.php';
 
 use App\Amqp\Worker;
-use App\Helpers\AmqpProcessHelper;
+use App\Helpers\AmqpProcess;
 use App\Providers\ServiceProvider;
 use App\ValueObjects\AmqpConsumerTag;
 use App\ValueObjects\AmqpDirectExchange;
@@ -22,9 +22,9 @@ $provider = new ServiceProvider();
 $provider->register($di);
 
 /** @var Worker $amqp */
-$amqp = $di->getShared('amqp-worker');
+$amqp = $di->getShared(Worker::class);
 
-$process = new AmqpProcessHelper();
+$process = new AmqpProcess();
 
 $worker = new AmqpWorker(
     new AmqpQueue($process->getQueue()),
@@ -33,6 +33,8 @@ $worker = new AmqpWorker(
     new AmqpConsumerTag()
 );
 
-$amqp->work($worker, new BeanstalkTube($process->getTube()));
+$queue = new BeanstalkTube($process->getTube());
+
+$amqp->work($worker, $queue);
 
 $amqp->close();

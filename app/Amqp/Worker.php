@@ -3,13 +3,13 @@
 namespace App\Amqp;
 
 use App\Entities\AmqpWorker;
+use App\Loggers\AmqpLogger;
 use App\Loggers\LogStashLogger;
 use App\Queue\Queue;
 use App\ValueObjects\AmqpDeliveryTag;
 use App\ValueObjects\BeanstalkTube;
 use Closure;
 use Exception;
-use Phalcon\Logger\Adapter\File;
 use PhpAmqpLib\Channel\AMQPChannel;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
@@ -22,9 +22,9 @@ class Worker
 
     private $logstash;
 
-    private $file;
+    private $logger;
 
-    public function __construct(AMQPStreamConnection $connection, Queue $queue, LogStashLogger $logstash, File $file)
+    public function __construct(AMQPStreamConnection $connection, Queue $queue, LogStashLogger $logstash, AmqpLogger $logger)
     {
         $this->connection = $connection;
 
@@ -32,7 +32,7 @@ class Worker
 
         $this->logstash = $logstash;
 
-        $this->file = $file;
+        $this->logger = $logger->getFile();
     }
 
     public function work(AmqpWorker $worker, BeanstalkTube $tube)
@@ -43,7 +43,7 @@ class Worker
 
         $this->queue->connect($tube);
 
-        $this->file->info(" [*] Waiting for messages. To exit press CTRL+C");
+        $this->logger->info(" [*] Waiting for messages. To exit press CTRL+C");
 
         $channel->basic_consume($worker->getQueueName(), $worker->getConsumerTag(), false, false, false, false, $this->makeClosure());
 
@@ -52,7 +52,7 @@ class Worker
                 $channel->wait();
             } catch (Exception $exception)
             {
-                $this->file->emergency(sprintf("An error occurred: %s", $exception->getMessage()));
+                $this->logger->emergency(sprintf("An error occurred: %s", $exception->getMessage()));
             }
         }
     }
@@ -62,7 +62,7 @@ class Worker
         try {
             $this->connection->close();
         } catch (Exception $exception) {
-            $this->file->critical(sprintf("An error occurred when attempting to close the connection: %s", $exception->getMessage()));
+            $this->logger->critical(sprintf("An error occurred when attempting to close the connection: %s", $exception->getMessage()));
         } finally {
             $this->queue->disconnect();
         }

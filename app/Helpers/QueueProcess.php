@@ -2,7 +2,7 @@
 
 namespace App\Helpers;
 
-class QueueProcessHelper extends ProcessHelper
+class QueueProcess extends ProcessHelper
 {
     protected static $opts = [
         "t:" => "tube:",

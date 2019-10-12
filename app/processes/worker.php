@@ -4,7 +4,7 @@ namespace App\Processes;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-use App\Helpers\QueueProcessHelper;
+use App\Helpers\QueueProcess;
 use App\Providers\ServiceProvider;
 use App\Queue\Queue;
 use App\ValueObjects\BeanstalkTube;
@@ -17,9 +17,9 @@ $provider = new ServiceProvider();
 $provider->register($di);
 
 /** @var Queue $queue */
-$queue = $di->getShared('queue');
+$queue = $di->getShared(Queue::class);
 
-$process = new QueueProcessHelper();
+$process = new QueueProcess();
 
 $queue->connect(new BeanstalkTube($process->getTube()));
 

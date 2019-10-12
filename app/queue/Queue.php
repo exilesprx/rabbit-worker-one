@@ -5,35 +5,34 @@ namespace App\Queue;
 use App\Entities\QueueJobBody;
 use App\Exceptions\OutOfOrderException;
 use App\Loggers\LogStashLogger;
+use App\Loggers\QueueLogger;
 use App\Tasks\TaskConductor;
 use App\ValueObjects\BeanstalkTube;
 use App\ValueObjects\BuriedJobPriority;
 use App\ValueObjects\LowPriorityJob;
-use Phalcon\Logger\Adapter\File;
+use App\ValueObjects\QueueStandardTimeout;
 use Phalcon\Queue\Beanstalk;
 use PhpAmqpLib\Message\AMQPMessage;
 
 class Queue
 {
-    private static $TIMEOUT = 60;
-
     private $beanstalk;
 
     private $taskConductor;
 
+    private $logstash;
+
     private $logger;
 
-    private $file;
-
-    public function __construct(Beanstalk $beanstalk, TaskConductor $taskConductor, LogStashLogger $logger, File $file)
+    public function __construct(Beanstalk $beanstalk, TaskConductor $taskConductor, LogStashLogger $logstash, QueueLogger $logger)
     {
         $this->beanstalk = $beanstalk;
 
         $this->taskConductor = $taskConductor;
 
-        $this->logger = $logger;
+        $this->logstash = $logstash;
 
-        $this->file = $file;
+        $this->logger = $logger->getFile();
     }
 
     public function connect(BeanstalkTube $tube)
@@ -57,7 +56,7 @@ class Queue
 
     public function workReserved()
     {
-        while (($job = $this->beanstalk->reserve(self::$TIMEOUT)) !== false) {
+        while (($job = $this->beanstalk->reserve(QueueStandardTimeout::getValue())) !== false) {
             $body = QueueJobBody::from($job);
 
             try {
@@ -65,7 +64,7 @@ class Queue
 
                 $this->workBuriedJobsOfSameType($body);
             } catch (OutOfOrderException $exception) {
-                $this->file->critical($exception->getMessage());
+                $this->logger->critical($exception->getMessage());
 
                 /**
                  * Initial jobs have a LowPriorityJob value, therefore;
@@ -73,14 +72,14 @@ class Queue
                  */
                 $job->bury(BuriedJobPriority::getValue($exception));
 
-                $this->file->critical(sprintf("Kicked job into buried queue with priority of %d", BuriedJobPriority::getValue($exception)));
+                $this->logger->critical(sprintf("Kicked job into buried queue with priority of %d", BuriedJobPriority::getValue($exception)));
 
                 continue;
             }
 
             $job->delete();
 
-            $this->logger->info("Worked-Event", $body->toArray());
+            $this->logstash->info("Worked-Event", $body->toArray());
         }
     }
 
@@ -91,7 +90,7 @@ class Queue
             $body = QueueJobBody::from($job);
 
             if ($body->isSameType($queueJobBody)) {
-                $this->file->alert(sprintf("Kicking job version %d of type %s back into queue for reprocessing.", $body->getVersion(), $body->getType()));
+                $this->logger->alert(sprintf("Kicking job version %d of type %s back into queue for reprocessing.", $body->getVersion(), $body->getType()));
 
                 $job->kick();
             }
@@ -102,7 +101,7 @@ class Queue
     {
         while(($job = $this->beanstalk->peekReady()) !== false)
         {
-            $this->file->error("Cleanup up jobs");
+            $this->logger->error("Cleanup up jobs");
             $job->delete();
         }
     }
@@ -110,7 +109,7 @@ class Queue
     {
         while(($job = $this->beanstalk->peekBuried()) !== false)
         {
-            $this->file->error("Cleaning up buried jobs");
+            $this->logger->error("Cleaning up buried jobs");
             $job->delete();
         }
     }

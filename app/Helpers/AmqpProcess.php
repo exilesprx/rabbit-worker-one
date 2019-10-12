@@ -2,7 +2,7 @@
 
 namespace App\Helpers;
 
-class AmqpProcessHelper extends ProcessHelper
+class AmqpProcess extends ProcessHelper
 {
     protected static $opts = [
         "t:" => "tube:",

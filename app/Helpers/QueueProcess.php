@@ -14,6 +14,6 @@ class QueueProcess extends ProcessHelper
 
         if (!empty($this->arguments['tube'])) return $this->arguments['tube'];
 
-        return "phalcon";
+        return $this->config->path("queue.tube");
     }
 }

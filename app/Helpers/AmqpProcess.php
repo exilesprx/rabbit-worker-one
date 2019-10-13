@@ -16,7 +16,7 @@ class AmqpProcess extends ProcessHelper
 
         if (!empty($this->arguments['tube'])) return $this->arguments['tube'];
 
-        return "phalcon";
+        return $this->config->path("queue.tube");
     }
 
     public function getQueue() : string
@@ -25,7 +25,7 @@ class AmqpProcess extends ProcessHelper
 
         if (!empty($this->arguments['queue'])) return $this->arguments['queue'];
 
-        return "task_queue.one";
+        return $this->config->path("messaging.queue");
     }
 
     public function getExchange() : string
@@ -34,6 +34,6 @@ class AmqpProcess extends ProcessHelper
 
         if (!empty($this->arguments['exchange'])) return $this->arguments['exchange'];
 
-        return "worker_one";
+        return $this->config->path("messaging.exchange");
     }
 }

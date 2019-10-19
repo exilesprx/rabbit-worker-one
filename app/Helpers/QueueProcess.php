@@ -14,6 +14,6 @@ class QueueProcess extends ProcessHelper
 
         if (!empty($this->arguments['tube'])) return $this->arguments['tube'];
 
-        return $this->config->path("queue.tube");
+        return $this->config->path("queue.beanstalkd.tube");
     }
 }

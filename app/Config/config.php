@@ -6,19 +6,21 @@
 defined('BASE_PATH') || define('BASE_PATH', getenv('BASE_PATH') ?: realpath(dirname(__FILE__) . '/../..'));
 defined('APP_PATH') || define('APP_PATH', BASE_PATH . '/app');
 
-$env = \Dotenv\Dotenv::create(dirname(BASE_PATH . "../"));
+$envFile = sprintf("%s%s", ".env", getenv('APPLICATION_ENV') ? "." . getenv('APPLICATION_ENV') : "");
+
+$env = \Dotenv\Dotenv::create(dirname(dirname(__DIR__)), $envFile);
 $env->load();
 
 return new \Phalcon\Config([
-    'database' => require_once('database.php'),
+    'database' => require(dirname(__FILE__) . '/database.php'),
 
-    'application' => require_once('application.php'),
+    'application' => require(dirname(__FILE__) . '/application.php'),
 
-    'queue' => require_once('queue.php'),
+    'queue' => require(dirname(__FILE__) . '/queue.php'),
 
-    'messaging' => require_once('messaging.php'),
+    'messaging' => require(dirname(__FILE__) . '/messaging.php'),
 
-    'listeners' => require_once('listeners.php'),
+    'listeners' => require(dirname(__FILE__) . '/listeners.php'),
 
-    'logging' => require_once('logging.php')
+    'logging' => require(dirname(__FILE__) . '/logging.php')
 ]);

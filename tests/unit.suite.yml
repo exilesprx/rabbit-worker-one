@@ -8,5 +8,6 @@ modules:
         - Asserts
         - \Helper\Unit
         - Phalcon:
-              bootstrap: tests/bootstrap.php
+            part: services
+            bootstrap: tests/bootstrap.php
     step_decorators: ~

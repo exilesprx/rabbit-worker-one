@@ -40,8 +40,8 @@ class ServiceProvider implements ServiceProviderInterface
     {
         $this->di = $di;
 
-        $this->di->setShared('Config', function () {
-            return include APP_PATH . "/Config/config.php";
+        $this->di->setShared('config', function () {
+            return include dirname(__DIR__) . "/Config/config.php";
         });
 
         $config = $di->get('Config');

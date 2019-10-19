@@ -7,7 +7,7 @@ use Phalcon\Mvc\Url as UrlResolver;
  * Shared configuration service
  */
 $di->setShared('config', function () {
-    return include_once dirname(__DIR__) . "/Config/config.php";
+    return include dirname(__DIR__) . "/Config/config.php";
 });
 
 /**

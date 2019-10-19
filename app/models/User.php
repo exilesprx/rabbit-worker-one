@@ -10,6 +10,8 @@ class User extends BaseModel
 
     protected $email;
 
+    protected $version;
+
     public static function with(string $email, int $version) : self
     {
         $model = new self();
@@ -24,5 +26,15 @@ class User extends BaseModel
     public function getId() : int
     {
         return $this->id;
+    }
+
+    public function getEmail() : string
+    {
+        return $this->email;
+    }
+
+    public function getVersion() : int
+    {
+        return $this->version;
     }
 }

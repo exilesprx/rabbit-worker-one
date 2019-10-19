@@ -7,9 +7,9 @@ use App\Exceptions\OutOfOrderException;
 interface TaskContract
 {
     /**
+     * @param string $name
      * @param array $data
      *
-     * @throws OutOfOrderException
      */
-    public function execute(array $data);
+    public function execute(string $name, array $data);
 }

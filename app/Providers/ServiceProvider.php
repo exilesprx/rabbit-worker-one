@@ -6,17 +6,21 @@ define('BASE_PATH', dirname(__DIR__));
 define('APP_PATH', BASE_PATH . '');
 
 use App\Amqp\Worker;
+use App\Events\UserEmailUpdated;
 use App\Events\UserUpdatedEmail;
 use App\Listeners\UserTaskListener;
 use App\Loggers\AmqpLogger;
 use App\Loggers\LogStashLogger;
 use App\Loggers\QueueLogger;
+use App\Models\User;
 use App\Queue\Queue;
+use App\Repositories\UserRepository;
 use App\Tasks\ProcessEventTask;
 use App\Tasks\TaskConductor;
 use Monolog\Formatter\LogstashFormatter;
 use Monolog\Handler\SocketHandler;
 use Monolog\Logger;
+use Phalcon\Di;
 use Phalcon\Di\ServiceProviderInterface;
 use Phalcon\DiInterface;
 use Phalcon\Events\Manager as EventsManager;
@@ -96,15 +100,6 @@ class ServiceProvider implements ServiceProviderInterface
         );
 
         $this->di->setShared(
-            UserTaskListener::class,
-            function() use($di) {
-                return new UserTaskListener(
-                    $di->get(File::class)
-                );
-            }
-        );
-
-        $this->di->setShared(
             EventsManager::class,
             function() {
                 return new EventsManager();
@@ -113,10 +108,7 @@ class ServiceProvider implements ServiceProviderInterface
 
         $eventsManager = $this->getEventsManager();
 
-        $this->di->set(
-            UserUpdatedEmail::getUblName(),
-            UserUpdatedEmail::class
-        );
+        $this->registerEvents();
 
         $this->di->setShared(
             TaskConductor::class,
@@ -126,6 +118,17 @@ class ServiceProvider implements ServiceProviderInterface
                 $task->setEventsManager($eventsManager);
 
                 return new TaskConductor($task);
+            }
+        );
+
+        $this->di->setShared(
+            UserTaskListener::class,
+            function() use($di) {
+                return new UserTaskListener(
+                    $di->get(File::class),
+                    new UserRepository(new User()),
+                    $di->get(TaskConductor::class)
+                );
             }
         );
 
@@ -201,5 +204,18 @@ class ServiceProvider implements ServiceProviderInterface
     private function getEventName(string $event) : string
     {
         return ($event)::getBaseEventType();
+    }
+
+    private function registerEvents()
+    {
+        $this->di->set(
+            UserUpdatedEmail::getUblName(),
+            UserUpdatedEmail::class
+        );
+
+        $this->di->set(
+            UserEmailUpdated::getUblName(),
+            UserEmailUpdated::class
+        );
     }
 }

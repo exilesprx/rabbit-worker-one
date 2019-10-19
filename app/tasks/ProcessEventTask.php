@@ -42,17 +42,15 @@ class ProcessEventTask implements EventsAwareInterface, TaskContract
         return $this->manager;
     }
 
-    public function execute(array $data)
+    public function execute(string $name, array $data)
     {
-        $event = $this->getEvent($data);
+        $event = $this->getEvent($name, $data);
 
         $this->manager->fire($event::getEventType(), $this, $data);
     }
 
-    public function getEvent(array $data) : EventContract
+    public function getEvent(string $name, array $data) : EventContract
     {
-        $name = $data['name'];
-
         return $this->di->get($name, [$data]);
     }
 }

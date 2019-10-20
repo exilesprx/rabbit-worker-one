@@ -20,6 +20,7 @@
         "classmap": ["app/"]
     },
     "require-dev": {
-        "codeception/codeception": "^3.1"
+        "codeception/codeception": "^3.1",
+        "fzaninotto/faker": "^1.8"
     }
 }

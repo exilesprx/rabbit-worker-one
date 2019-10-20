@@ -2,7 +2,7 @@
 
 namespace App\Events;
 
-class UserUpdatedEmail extends UserEvent
+class UserEmailUpdated extends UserEvent
 {
     protected $data;
 
@@ -16,7 +16,7 @@ class UserUpdatedEmail extends UserEvent
         return [
             'id' => $this->data['payload']['user_id'],
             'email' => $this->data['payload']['email'],
-            'version' => $this->data['payload']['version']
+            'version' => $this->data['payload']['email']
         ];
     }
 }

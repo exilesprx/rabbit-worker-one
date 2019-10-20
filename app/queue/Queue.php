@@ -6,6 +6,7 @@ use App\Entities\QueueJobBody;
 use App\Exceptions\OutOfOrderException;
 use App\Loggers\LogStashLogger;
 use App\Loggers\QueueLogger;
+use App\Tasks\Task;
 use App\Tasks\TaskConductor;
 use App\ValueObjects\BeanstalkTube;
 use App\ValueObjects\BuriedJobPriority;
@@ -59,8 +60,13 @@ class Queue
         while (($job = $this->beanstalk->reserve(QueueStandardTimeout::getValue())) !== false) {
             $body = QueueJobBody::from($job);
 
+            $task = new Task(
+                $body->getType(),
+                $body->toArray()
+            );
+
             try {
-                $this->taskConductor->executeTask($body);
+                $this->taskConductor->executeTask($task);
 
                 $this->workBuriedJobsOfSameType($body);
             } catch (OutOfOrderException $exception) {

@@ -1,0 +1,48 @@
+# PHP CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-php/ for more details
+#
+version: 2
+jobs:
+  build:
+    branches:
+      only:
+        - master
+        - develop
+    docker:
+      # Specify the version you desire here
+      - image: exilesprx/phalcon7.2:latest
+      - image: circleci/mariadb
+        name: mariadb
+        environment:
+          MYSQL_ROOT_PASSWORD: default
+          MYSQL_DATABASE: default
+          MYSQL_USER: default
+          MYSQL_PASSWORD: secret
+
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+            # "composer.lock" can be used if it is committed to the repo
+            - v1-dependencies-{{ checksum "composer.json" }}
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
+
+      - run:
+          name: Install composer dependencies
+          command: composer install
+
+      - save_cache:
+          key: v1-dependencies-{{ checksum "composer.json" }}
+          paths:
+            - ./vendor
+
+      - run:
+          name: Build codeception suites
+          command: ./vendor/bin/codecept build
+      - run:
+          name: Run unit tests
+          command: ./vendor/bin/codecept run unit

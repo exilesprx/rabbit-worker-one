@@ -2,10 +2,11 @@
 
 namespace App\Listeners;
 
+use App\AggregateRoots\User;
+use App\Events\UserEmailUpdated;
 use App\Events\UserUpdatedEmail;
-use App\Exceptions\OutOfOrderException;
-use App\Models\User;
 use App\Store\Email;
+use App\Tasks\TaskConductor;
 use Phalcon\Events\Event;
 use Phalcon\Logger\Adapter\File as Logger;
 use Ramsey\Uuid\Uuid;
@@ -14,63 +15,62 @@ class UserTaskListener extends Listener
 {
     protected $logger;
 
+    protected $repository;
+
+    protected $conductor;
+
     protected static $events = [
-        UserUpdatedEmail::class
+        UserUpdatedEmail::class,
+        UserEmailUpdated::class
     ];
 
-    public function __construct(Logger $logger)
+    public function __construct(Logger $logger, TaskConductor $conductor)
     {
         $this->logger = $logger;
+
+        $this->repository = User::getRepository();
+
+        $this->conductor = $conductor;
     }
 
+    /**
+     * @param Event $event
+     * @param $task
+     * @throws \App\Exceptions\OutOfOrderException
+     */
     public function onUserUpdatedEmail(Event $event, $task)
     {
-        $data = $event->getData();
+        // TODO: This should be moved to the TaskCollection class during the flush
+        $this->insertEvent($event->getData());
 
-        $id = $data['payload']['user_id'];
-        $email = $data['payload']['email'];
-        $version = $data['payload']['version'];
+        $userId = $event->getData()['id'];
 
-        /** @var User $user */
-        $user = User::findFirst(
-            [
-                'id' => $id
-            ]
-        );
+        $user = $this->repository->findUserById($userId);
 
-        if (!$this->isNextVersion($user, $version)) {
-            throw OutOfOrderException::job($user->getVersion(), $version);
-        }
-        $this->logger->critical(sprintf("Updated user version to %d", $version));
-        $user->update(
-            [
-                'email' => $email,
-                'version' => $version
-            ]
-        );
+        $user->updateUserEmail($event);
 
-        $payload = $event->getData();
+        $user->recordEvents($this->conductor);
 
-        $email = $this->initializeEmailStore($payload);
-
-        $email->save();
+        $user->save();
     }
 
-    private function initializeEmailStore(array $data) : Email
+    /**
+     * @param Event $event
+     */
+    public function onUserEmailUpdated(Event $event)
+    {
+        // TODO: Move to reactor
+    }
+
+    private function insertEvent(array $data)
     {
         $this->logger->alert(sprintf("Inserting email with version %d", $data['payload']['version']));
 
-        return Email::with(
+        Email::with(
             Uuid::fromString($data['uuid']),
             $data['payload']['user_id'],
             $data['payload']['version'],
             $data['payload']['email']
-        );
-    }
-
-    private function isNextVersion(User $user, int $nextVersion) : bool
-    {
-        return ($nextVersion === 1 && $user->getVersion() === 1)
-            || $user->getVersion() + 1 === $nextVersion;
+        )->save();
     }
 }

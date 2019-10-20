@@ -32,6 +32,11 @@ class Email extends BaseModel
         return $model;
     }
 
+    public function getEmail() : string
+    {
+        return $this->email;
+    }
+
     public function columnMap()
     {
         return [

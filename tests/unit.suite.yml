@@ -7,4 +7,7 @@ modules:
     enabled:
         - Asserts
         - \Helper\Unit
-    step_decorators: ~        
+        - Phalcon:
+            part: services
+            bootstrap: tests/bootstrap.php
+    step_decorators: ~

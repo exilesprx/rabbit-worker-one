@@ -6,17 +6,24 @@ define('BASE_PATH', dirname(__DIR__));
 define('APP_PATH', BASE_PATH . '');
 
 use App\Amqp\Worker;
+use App\Events\UserEmailUpdated;
 use App\Events\UserUpdatedEmail;
 use App\Listeners\UserTaskListener;
 use App\Loggers\AmqpLogger;
 use App\Loggers\LogStashLogger;
 use App\Loggers\QueueLogger;
+use App\Models\EmailValidation;
+use App\Models\User;
 use App\Queue\Queue;
+use App\Repositories\EmailValidationRepository;
+use App\Repositories\UserRepository;
+use App\Repositories\UserService;
 use App\Tasks\ProcessEventTask;
 use App\Tasks\TaskConductor;
 use Monolog\Formatter\LogstashFormatter;
 use Monolog\Handler\SocketHandler;
 use Monolog\Logger;
+use Phalcon\Di;
 use Phalcon\Di\ServiceProviderInterface;
 use Phalcon\DiInterface;
 use Phalcon\Events\Manager as EventsManager;
@@ -40,8 +47,8 @@ class ServiceProvider implements ServiceProviderInterface
     {
         $this->di = $di;
 
-        $this->di->setShared('Config', function () {
-            return include APP_PATH . "/Config/config.php";
+        $this->di->setShared('config', function () {
+            return include dirname(__DIR__) . "/Config/config.php";
         });
 
         $config = $di->get('Config');
@@ -96,15 +103,6 @@ class ServiceProvider implements ServiceProviderInterface
         );
 
         $this->di->setShared(
-            UserTaskListener::class,
-            function() use($di) {
-                return new UserTaskListener(
-                    $di->get(File::class)
-                );
-            }
-        );
-
-        $this->di->setShared(
             EventsManager::class,
             function() {
                 return new EventsManager();
@@ -113,9 +111,14 @@ class ServiceProvider implements ServiceProviderInterface
 
         $eventsManager = $this->getEventsManager();
 
-        $this->di->set(
-            UserUpdatedEmail::getUblName(),
-            UserUpdatedEmail::class
+        $this->registerEvents();
+
+        $this->di->setShared(
+            UserService::class,
+            new UserService(
+                new UserRepository(new User()),
+                new EmailValidationRepository(new EmailValidation())
+            )
         );
 
         $this->di->setShared(
@@ -126,6 +129,16 @@ class ServiceProvider implements ServiceProviderInterface
                 $task->setEventsManager($eventsManager);
 
                 return new TaskConductor($task);
+            }
+        );
+
+        $this->di->setShared(
+            UserTaskListener::class,
+            function() use($di) {
+                return new UserTaskListener(
+                    $di->get(File::class),
+                    $di->get(TaskConductor::class)
+                );
             }
         );
 
@@ -193,6 +206,7 @@ class ServiceProvider implements ServiceProviderInterface
                 $manager->attach(
                     $this->getEventName($event),
                     $listener
+                    // TODO: Check instance of Projector/Reactor and set the priority based on the type.
                 );
             }
         }
@@ -201,5 +215,18 @@ class ServiceProvider implements ServiceProviderInterface
     private function getEventName(string $event) : string
     {
         return ($event)::getBaseEventType();
+    }
+
+    private function registerEvents()
+    {
+        $this->di->set(
+            UserUpdatedEmail::getUblName(),
+            UserUpdatedEmail::class
+        );
+
+        $this->di->set(
+            UserEmailUpdated::getUblName(),
+            UserEmailUpdated::class
+        );
     }
 }

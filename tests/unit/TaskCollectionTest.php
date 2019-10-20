@@ -27,7 +27,7 @@ class TaskCollectionTest extends \Codeception\Test\Unit
     // tests
     public function testTaskCollectionIsEmpty()
     {
-        $this->assertEmpty($this->collection->getTasks());
+        $this->assertFalse($this->collection->hasTasks());
     }
 
     public function testTaskCollectionHasNoTasks()
@@ -39,7 +39,7 @@ class TaskCollectionTest extends \Codeception\Test\Unit
     {
         $this->collection->addTask($this->generateNewTask());
 
-        $this->tester->assertCount(1, $this->collection->getTasks());
+        $this->tester->assertCount(1, $this->collection);
     }
 
     public function testTestCollectionHasFivePendingTasks()
@@ -50,15 +50,15 @@ class TaskCollectionTest extends \Codeception\Test\Unit
         $this->collection->addTask($this->generateNewTask());
         $this->collection->addTask($this->generateNewTask());
 
-        $this->tester->assertCount(5, $this->collection->getTasks());
+        $this->tester->assertCount(5, $this->collection);
     }
 
-    public function testTaskCollectionIsFlushedAfterGettingTasks()
+    public function testTaskCollectionIsEmptyAfterFlushingTasks()
     {
         $this->collection->addTask($this->generateNewTask());
-        $this->collection->getTasks();
+        $this->collection->flush();
 
-        $this->tester->assertCount(0, $this->collection->getTasks());
+        $this->tester->assertCount(0, $this->collection);
         $this->tester->assertTrue($this->collection->isEmpty());
     }
 

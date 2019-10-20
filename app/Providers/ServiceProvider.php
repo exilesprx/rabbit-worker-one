@@ -12,9 +12,12 @@ use App\Listeners\UserTaskListener;
 use App\Loggers\AmqpLogger;
 use App\Loggers\LogStashLogger;
 use App\Loggers\QueueLogger;
+use App\Models\EmailValidation;
 use App\Models\User;
 use App\Queue\Queue;
+use App\Repositories\EmailValidationRepository;
 use App\Repositories\UserRepository;
+use App\Repositories\UserService;
 use App\Tasks\ProcessEventTask;
 use App\Tasks\TaskConductor;
 use Monolog\Formatter\LogstashFormatter;
@@ -111,6 +114,14 @@ class ServiceProvider implements ServiceProviderInterface
         $this->registerEvents();
 
         $this->di->setShared(
+            UserService::class,
+            new UserService(
+                new UserRepository(new User()),
+                new EmailValidationRepository(new EmailValidation())
+            )
+        );
+
+        $this->di->setShared(
             TaskConductor::class,
             function() use($di, $eventsManager) {
                 $task = new ProcessEventTask($di);
@@ -126,7 +137,6 @@ class ServiceProvider implements ServiceProviderInterface
             function() use($di) {
                 return new UserTaskListener(
                     $di->get(File::class),
-                    new UserRepository(new User()),
                     $di->get(TaskConductor::class)
                 );
             }
@@ -196,6 +206,7 @@ class ServiceProvider implements ServiceProviderInterface
                 $manager->attach(
                     $this->getEventName($event),
                     $listener
+                    // TODO: Check instance of Projector/Reactor and set the priority based on the type.
                 );
             }
         }

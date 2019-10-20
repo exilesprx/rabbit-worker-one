@@ -28,9 +28,11 @@ class TaskConductor
      */
     public function executeTasks(TaskCollection $tasks)
     {
-        foreach($tasks->getTasks() as $task)
+        foreach($tasks as $task)
         {
             $this->executeTask($task);
         }
+
+        $tasks->flush();
     }
 }

@@ -2,13 +2,19 @@
 
 namespace App\Tasks;
 
-class TaskCollection
+use Iterator;
+
+class TaskCollection implements Iterator
 {
     private $tasks;
 
-    public function __construct()
+    private $position;
+
+    public function __construct(array $tasks = [])
     {
-        $this->tasks = [];
+        $this->tasks = $tasks;
+
+        $this->position = 0;
     }
 
     public function addTask(Task $task)
@@ -16,9 +22,9 @@ class TaskCollection
         $this->tasks[] = $task;
     }
 
-    public function getTasks() : array
+    public function flush() : TaskCollection
     {
-        $tasks = $this->tasks;
+        $tasks = new self($this->tasks);
 
         $this->tasks = [];
 
@@ -33,5 +39,30 @@ class TaskCollection
     public function hasTasks() : bool
     {
         return !empty($this->tasks);
+    }
+
+    public function current() : Task
+    {
+        return $this->tasks[$this->position];
+    }
+
+    public function next()
+    {
+        $this->position++;
+    }
+
+    public function key() : int
+    {
+        return $this->position;
+    }
+
+    public function valid() : bool
+    {
+        return isset($this->tasks[$this->position]);
+    }
+
+    public function rewind()
+    {
+        $this->position = 0;
     }
 }

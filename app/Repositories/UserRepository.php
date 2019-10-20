@@ -14,23 +14,25 @@ class UserRepository
         $this->model = $model;
     }
 
-    public function findUserById(UserDto $user) : UserAR
+    public function findUserById(int $userId) : UserDto
     {
         /** @var User $user */
         $user = $this->model::findFirst(
             [
-                'id' => $user->getId()
+                'id' => $userId
             ]
         );
 
-        return new UserAR(
-            $user->getId(),
-            $user->getEmail(),
-            $user->getVersion()
+        return UserDto::fromArray(
+            [
+                'id' => $user->getId(),
+                'email' => $user->getEmail(),
+                'version' => $user->getVersion()
+            ]
         );
     }
 
-    public function updateUser(UserAR $user)
+    public function updateEmail(UserAR $user)
     {
         $this->model->update(
             [

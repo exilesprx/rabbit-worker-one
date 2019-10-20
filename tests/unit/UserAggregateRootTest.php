@@ -18,20 +18,39 @@ class UserAggregateRootTest extends \Codeception\Test\Unit
     /** @var User */
     private $user;
 
+    private $conductor;
+
     protected function _before()
     {
+        $di = \Phalcon\Di::getDefault();
         $this->faker = \Faker\Factory::create();
+
+        $di->set(
+            \App\Repositories\UserRepository::class,
+            $this->makeEmpty(\App\Repositories\UserRepository::class)
+        );
+
+        $di->set(
+            \App\Repositories\EmailValidationRepository::class,
+            $this->makeEmpty(\App\Repositories\EmailValidationRepository::class)
+        );
+
+        $this->conductor = $this->makeEmpty(\App\Tasks\TaskConductor::class);
 
         $id = $this->faker->randomNumber();
         $email = $this->faker->email;
 
-        $this->user = new User($id, $email, 1);
+        $validation = new \App\Entities\EmailValidation(1, $id, 'new');
+
+        $this->user = new User($id, $email, 1, $validation);
     }
 
     // tests
     public function testNewUserHasEmptyTasks()
     {
-        $this->tester->assertTrue($this->user->getTasks()->isEmpty(), "User tasks are not empty.");
+        $this->user->recordEvents($this->conductor);
+
+        $this->tester->assertFalse($this->user->hasTasks(), "User tasks are not empty.");
     }
 
     public function testUserCannotSkipAVersion()
@@ -65,8 +84,7 @@ class UserAggregateRootTest extends \Codeception\Test\Unit
         $command = $this->generateUserUpdateEmailCommand(2);
         $this->user->updateUserEmail($command);
 
-        $this->tester->assertTrue($this->user->getTasks()->hasTasks(), "User doesn't have tasks.");
-        $this->tester->assertCount(1, $this->user->getTasks()->getTasks());
+        $this->tester->assertTrue($this->user->hasTasks(), "User doesn't have tasks when it should.");
     }
 
     public function testUserHasUpdateEmailAndVersionWithAPendingTask()
@@ -75,8 +93,7 @@ class UserAggregateRootTest extends \Codeception\Test\Unit
         $this->user->updateUserEmail($command);
         $data = $command->getData();
 
-        $this->tester->assertTrue($this->user->getTasks()->hasTasks(), "User doesn't have tasks.");
-        $this->tester->assertCount(1, $this->user->getTasks()->getTasks());
+        $this->tester->assertTrue($this->user->hasTasks(), "User doesn't have tasks.");
         $this->tester->assertEquals($data['email'], $this->user->getEmail());
         $this->tester->assertEquals($data['version'], $this->user->getVersion());
     }
@@ -91,10 +108,49 @@ class UserAggregateRootTest extends \Codeception\Test\Unit
         $this->user->updateUserEmail($secondCommand);
         $this->user->updateUserEmail($thirdCommand);
 
-        $this->tester->assertTrue($this->user->getTasks()->hasTasks(), "User doesn't have tasks.");
-        $this->tester->assertCount(3, $this->user->getTasks()->getTasks());
+        $this->tester->assertTrue($this->user->hasTasks(), "User doesn't have tasks.");
         $this->tester->assertEquals($thirdCommand->getData()['email'], $this->user->getEmail());
         $this->tester->assertEquals($thirdCommand->getData()['version'], $this->user->getVersion());
+    }
+
+    public function testTaskCollectionIsEmptyAfterRecordingEvents()
+    {
+        $firstCommand = $this->generateUserUpdateEmailCommand(2);
+        $this->user->updateUserEmail($firstCommand);
+
+        $this->user->recordEvents($this->conductor);
+        $this->tester->assertFalse($this->user->hasTasks(), "User has tasks when it shouldn't.");
+    }
+
+    public function testUserHasInitialEmailValidationOfNew()
+    {
+        $this->tester->assertEquals('new', $this->user->getEmailStatus());
+    }
+
+    public function testUserHasEmailStatusOfInvalid()
+    {
+        $command = new UserUpdatedEmail(
+            [
+                'payload' => [
+                    'user_id' => $this->user->getId(),
+                    'email' => "someinvalidemailaddress@test",
+                    'version' => 2
+                ]
+            ]
+        );
+
+        $this->user->updateUserEmail($command);
+        $this->user->recordEvents($this->conductor);
+
+        $this->tester->assertFalse($this->user->isEmailValid());
+    }
+
+    public function testUserHasEmailStatusOfValid()
+    {
+        $command = $this->generateUserUpdateEmailCommand(2);
+        $this->user->updateUserEmail($command);
+
+        $this->tester->assertTrue($this->user->isEmailValid());
     }
 
     protected function generateUserUpdateEmailCommand(int $version) : UserUpdatedEmail

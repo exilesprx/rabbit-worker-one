@@ -2,10 +2,9 @@
 
 namespace App\Listeners;
 
+use App\AggregateRoots\User;
 use App\Events\UserEmailUpdated;
 use App\Events\UserUpdatedEmail;
-use App\Repositories\UserDto;
-use App\Repositories\UserRepository;
 use App\Store\Email;
 use App\Tasks\TaskConductor;
 use Phalcon\Events\Event;
@@ -25,11 +24,11 @@ class UserTaskListener extends Listener
         UserEmailUpdated::class
     ];
 
-    public function __construct(Logger $logger, UserRepository $repository, TaskConductor $conductor)
+    public function __construct(Logger $logger, TaskConductor $conductor)
     {
         $this->logger = $logger;
 
-        $this->repository = $repository;
+        $this->repository = User::getRepository();
 
         $this->conductor = $conductor;
     }
@@ -41,20 +40,18 @@ class UserTaskListener extends Listener
      */
     public function onUserUpdatedEmail(Event $event, $task)
     {
+        // TODO: This should be moved to the TaskCollection class during the flush
         $this->insertEvent($event->getData());
-        
-        $user = $this->repository->findUserById(
-            UserDto::fromArray(
-                $event->getData()
-            )
-        );
+
+        $userId = $event->getData()['id'];
+
+        $user = $this->repository->findUserById($userId);
 
         $user->updateUserEmail($event);
 
-        // Once other entities are added to this AR, then a "parent" repository should be used to save each entity.
-        $this->repository->updateUser($user);
+        $user->recordEvents($this->conductor);
 
-        $this->conductor->executeTasks($user->getTasks());
+        $user->save();
     }
 
     /**

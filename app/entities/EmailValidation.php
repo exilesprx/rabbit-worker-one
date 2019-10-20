@@ -44,6 +44,7 @@ class EmailValidation
 
     public function updateStatus(string $email)
     {
+        // TODO: Update the status to use a state machine.
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $this->status = "invalid";
 

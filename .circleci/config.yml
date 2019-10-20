@@ -1,0 +1,79 @@
+# PHP CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-php/ for more details
+#
+version: 2
+jobs:
+  build:
+    branches:
+      only:
+        - master
+        - develop
+    docker:
+      # Specify the version you desire here
+      - image: phusion/baseimage:latest
+      - image: circleci/mariadb
+        name: mariadb
+        environment:
+          MYSQL_ROOT_PASSWORD: default
+          MYSQL_DATABASE: default
+          MYSQL_USER: default
+          MYSQL_PASSWORD: secret
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install the software properties common
+          command: apt-get install -y software-properties-common
+      - run:
+          name: Install the ondrej/php repository
+          command: add-apt-repository -y ppa:ondrej/php
+      - run:
+          name: Update the list of available packages
+          command: apt-get update
+      - run:
+          name: Install all php extensions
+          command: apt-get install -y --allow-downgrades --allow-remove-essential --allow-change-held-packages php7.2-cli php7.2-common php7.2-curl php7.2-intl php7.2-json php7.2-xml php7.2-mbstring php7.2-mysql php7.2-pgsql php7.2-sqlite php7.2-sqlite3 php7.2-zip php7.2-bcmath php7.2-memcached php7.2-gd php7.2-dev pkg-config libcurl4-openssl-dev libedit-dev libssl-dev libxml2-dev xz-utils libsqlite3-dev sqlite3 git curl vim nano postgresql-client
+      - run:
+          name: Clean up packages
+          command: apt-get clean
+      - run:
+          name: Install composer
+          command: curl -s http://getcomposer.org/installer | php && echo "export PATH=${PATH}:/var/www/vendor/bin" >> ~/.bashrc && mv composer.phar /usr/local/bin/composer
+      - run:
+          name: Source the bashrc file
+          command: . ~/.bashrc
+      - run:
+          name: Install the Phalcon repository
+          command: curl -s https://packagecloud.io/install/repositories/phalcon/stable/script.deb.sh | bash
+      - run:
+          name: Update the list of available packages
+          command: apt-get update
+      - run:
+          name: Install the Phalcon extension
+          command: apt-get install -y php7.2-phalcon
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+            # "composer.lock" can be used if it is committed to the repo
+            - v1-dependencies-{{ checksum "composer.json" }}
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
+
+      - run:
+          name: Install composer dependencies
+          command: composer install
+
+      - save_cache:
+          key: v1-dependencies-{{ checksum "composer.json" }}
+          paths:
+            - ./vendor
+
+      - run:
+          name: Build codeception suites
+          command: ./vendor/bin/codecept build
+      - run:
+          name: Run unit tests
+          command: ./vendor/bin/codecept run unit

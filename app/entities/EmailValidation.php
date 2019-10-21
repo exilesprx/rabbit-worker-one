@@ -2,11 +2,12 @@
 
 namespace App\Entities;
 
-use App\Repositories\EmailValidationRepository;
+use App\StateMachines\EmailValidationState;
+use App\StateMachines\InvalidEmail;
+use App\StateMachines\ValidEmail;
 use App\Tasks\Task;
 use App\Tasks\TaskCollection;
 use App\Tasks\TaskConductor;
-use Phalcon\Di;
 
 class EmailValidation
 {
@@ -18,7 +19,7 @@ class EmailValidation
 
     private $tasks;
 
-    public function __construct(int $id, int $userId, string $status)
+    public function __construct(int $id, int $userId, EmailValidationState $status)
     {
         $this->id = $id;
 
@@ -29,24 +30,10 @@ class EmailValidation
         $this->tasks = new TaskCollection();
     }
 
-    public static function getRepository() : EmailValidationRepository
-    {
-        return Di::getDefault()->get(EmailValidationRepository::class);
-    }
-
-    public function save()
-    {
-        /** @var EmailValidationRepository $repo */
-        $repo = self::getRepository();
-
-        $repo->updateStatus($this);
-    }
-
     public function updateStatus(string $email)
     {
-        // TODO: Update the status to use a state machine.
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->status = "invalid";
+            $this->transitionStatusTo(new InvalidEmail());
 
             $this->tasks->addTask(
                 new Task(
@@ -61,7 +48,7 @@ class EmailValidation
             return;
         }
 
-        $this->status = "valid";
+        $this->transitionStatusTo(new ValidEmail());
 
         $this->tasks->addTask(
             new Task(
@@ -78,10 +65,10 @@ class EmailValidation
 
     public function isValid() : bool
     {
-        return $this->status == "valid";
+        return $this->status instanceof ValidEmail;
     }
 
-    public function getStatus(): string
+    public function getStatus(): EmailValidationState
     {
         return $this->status;
     }
@@ -94,5 +81,10 @@ class EmailValidation
     public function recordEvents(TaskConductor $conductor)
     {
         $conductor->executeTasks($this->tasks->flush());
+    }
+
+    private function transitionStatusTo(EmailValidationState $status)
+    {
+        $this->status = $this->status->transitionTo($status);
     }
 }

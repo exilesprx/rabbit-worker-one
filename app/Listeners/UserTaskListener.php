@@ -2,9 +2,9 @@
 
 namespace App\Listeners;
 
-use App\AggregateRoots\User;
 use App\Events\UserEmailUpdated;
 use App\Events\UserUpdatedEmail;
+use App\Repositories\UserRepository;
 use App\Store\Email;
 use App\Tasks\TaskConductor;
 use Phalcon\Events\Event;
@@ -24,11 +24,11 @@ class UserTaskListener extends Listener
         UserEmailUpdated::class
     ];
 
-    public function __construct(Logger $logger, TaskConductor $conductor)
+    public function __construct(Logger $logger, UserRepository $repository, TaskConductor $conductor)
     {
         $this->logger = $logger;
 
-        $this->repository = User::getRepository();
+        $this->repository = $repository;
 
         $this->conductor = $conductor;
     }
@@ -36,6 +36,7 @@ class UserTaskListener extends Listener
     /**
      * @param Event $event
      * @param $task
+     * @throws \App\Exceptions\InvalidUpdateException
      * @throws \App\Exceptions\OutOfOrderException
      */
     public function onUserUpdatedEmail(Event $event, $task)
@@ -51,7 +52,7 @@ class UserTaskListener extends Listener
 
         $user->recordEvents($this->conductor);
 
-        $user->save();
+        $this->repository->updateEmail($user);
     }
 
     /**

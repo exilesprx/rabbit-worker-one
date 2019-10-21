@@ -7,15 +7,12 @@ use App\Events\UserEmailUpdated;
 use App\Events\UserUpdatedEmail;
 use App\Exceptions\InvalidUpdateException;
 use App\Exceptions\OutOfOrderException;
-use App\Repositories\UserApplicationLayerContract;
-use App\Repositories\UserRepository;
-use App\Repositories\UserService;
+use App\StateMachines\EmailValidationState;
 use App\Tasks\Task;
 use App\Tasks\TaskCollection;
 use App\Tasks\TaskConductor;
-use Phalcon\Di;
 
-class User implements \App\AggregateRoots\UserApplicationLayerContract
+class User
 {
     private $id;
 
@@ -39,21 +36,6 @@ class User implements \App\AggregateRoots\UserApplicationLayerContract
         $this->emailValidation = $emailValidation;
 
         $this->tasks = new TaskCollection();
-    }
-
-    public static function getRepository() : UserApplicationLayerContract
-    {
-        return Di::getDefault()->get(UserService::class);
-    }
-
-    public function save()
-    {
-        /** @var UserRepository $repo */
-        $repo = Di::getDefault()->get(UserRepository::class);
-
-        $repo->updateEmail($this);
-
-        $this->emailValidation->save();
     }
 
     public function updateUserEmail(UserUpdatedEmail $command)
@@ -103,7 +85,7 @@ class User implements \App\AggregateRoots\UserApplicationLayerContract
         return $this->emailValidation->isValid();
     }
 
-    public function getEmailStatus() : string
+    public function getEmailStatus() : EmailValidationState
     {
         return $this->emailValidation->getStatus();
     }

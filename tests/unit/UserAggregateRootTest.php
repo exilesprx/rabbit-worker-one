@@ -1,14 +1,21 @@
 <?php
 
 use App\AggregateRoots\User;
+use App\Entities\EmailValidation;
 use App\Events\UserUpdatedEmail;
 use App\Exceptions\InvalidUpdateException;
 use App\Exceptions\OutOfOrderException;
+use App\Repositories\UserRepository;
+use App\StateMachines\NewEmail;
+use App\Tasks\TaskConductor;
+use Codeception\Test\Unit;
+use Faker\Factory;
+use Phalcon\Di;
 
-class UserAggregateRootTest extends \Codeception\Test\Unit
+class UserAggregateRootTest extends Unit
 {
     /**
-     * @var \UnitTester
+     * @var UnitTester
      */
     protected $tester;
 
@@ -22,25 +29,20 @@ class UserAggregateRootTest extends \Codeception\Test\Unit
 
     protected function _before()
     {
-        $di = \Phalcon\Di::getDefault();
-        $this->faker = \Faker\Factory::create();
+        $di = Di::getDefault();
+        $this->faker = Factory::create();
 
         $di->set(
-            \App\Repositories\UserRepository::class,
-            $this->makeEmpty(\App\Repositories\UserRepository::class)
+            UserRepository::class,
+            $this->makeEmpty(UserRepository::class)
         );
 
-        $di->set(
-            \App\Repositories\EmailValidationRepository::class,
-            $this->makeEmpty(\App\Repositories\EmailValidationRepository::class)
-        );
-
-        $this->conductor = $this->makeEmpty(\App\Tasks\TaskConductor::class);
+        $this->conductor = $this->makeEmpty(TaskConductor::class);
 
         $id = $this->faker->randomNumber();
         $email = $this->faker->email;
 
-        $validation = new \App\Entities\EmailValidation(1, $id, 'new');
+        $validation = new EmailValidation(1, $id, new NewEmail());
 
         $this->user = new User($id, $email, 1, $validation);
     }

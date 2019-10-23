@@ -2,7 +2,7 @@
 
 use App\AggregateRoots\User;
 use App\Entities\EmailValidation;
-use App\Events\UserUpdatedEmail;
+use App\Commands\UserUpdatedEmail;
 use App\Exceptions\InvalidUpdateException;
 use App\Exceptions\OutOfOrderException;
 use App\Repositories\UserRepository;
@@ -11,6 +11,7 @@ use App\Tasks\TaskConductor;
 use Codeception\Test\Unit;
 use Faker\Factory;
 use Phalcon\Di;
+use Ramsey\Uuid\Uuid;
 
 class UserAggregateRootTest extends Unit
 {
@@ -133,6 +134,7 @@ class UserAggregateRootTest extends Unit
     {
         $command = new UserUpdatedEmail(
             [
+                'uuid' => Uuid::uuid4(),
                 'payload' => [
                     'user_id' => $this->user->getId(),
                     'email' => "someinvalidemailaddress@test",
@@ -159,6 +161,7 @@ class UserAggregateRootTest extends Unit
     {
         return new UserUpdatedEmail(
             [
+                'uuid' => Uuid::uuid4(),
                 'payload' => [
                     'user_id' => $this->user->getId(),
                     'email' => $this->faker->email,

@@ -2,6 +2,8 @@
 
 namespace App\Entities;
 
+use App\Events\EmailInvalidated;
+use App\Events\EmailValidated;
 use App\StateMachines\EmailValidationState;
 use App\StateMachines\InvalidEmail;
 use App\StateMachines\ValidEmail;
@@ -33,11 +35,12 @@ class EmailValidation
     public function updateStatus(string $email)
     {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+
             $this->transitionStatusTo(new InvalidEmail());
 
             $this->tasks->addTask(
                 new Task(
-                    'email.invalid.validation',
+                    EmailInvalidated::getUblName(),
                     [
                         'email' => $email,
                         'user_id' => $this->userId
@@ -52,7 +55,7 @@ class EmailValidation
 
         $this->tasks->addTask(
             new Task(
-                'email.valid.validation',
+                EmailValidated::getUblName(),
                 [
                     'email' => $email,
                     'user_id' => $this->userId

@@ -2,9 +2,9 @@
 
 namespace App\AggregateRoots;
 
+use App\Commands\UserUpdatedEmail;
 use App\Entities\EmailValidation;
 use App\Events\UserEmailUpdated;
-use App\Events\UserUpdatedEmail;
 use App\Exceptions\InvalidUpdateException;
 use App\Exceptions\OutOfOrderException;
 use App\StateMachines\EmailValidationState;
@@ -40,22 +40,20 @@ class User
 
     public function updateUserEmail(UserUpdatedEmail $command)
     {
-        list($id, $email, $version) = array_values($command->getData());
-
-        if ($id != $this->id) {
+        if ($command->getId() != $this->id) {
             throw InvalidUpdateException::invalidEntityUpdate();
         }
 
-        if (!$this->isNextVersion($version)) {
-            throw OutOfOrderException::job($this->version, $version);
+        if (!$this->isNextVersion($command->getVersion())) {
+            throw OutOfOrderException::job($this->version, $command->getVersion());
         }
 
         // We've satisfied all business logic (not much here atm) so update the AR and add our events.
 
-        $this->version = $version;
-        $this->email = $email;
+        $this->version = $command->getVersion();
+        $this->email = $command->getEmail();
 
-        $this->emailValidation->updateStatus($email);
+        $this->emailValidation->updateStatus($command->getEmail());
 
         $this->tasks->addTask(
             new Task(

@@ -17,12 +17,21 @@ abstract class BaseModel extends Model
 
         $parts = explode('\\', $name);
 
-        $className = array_pop($parts);
+        $className = self::camelCaseClassName($parts);
 
         if (substr($className, -1) == "s") {
             return strtolower($className);
         }
 
         return strtolower($className) . "s";
+    }
+
+    private static function camelCaseClassName(array $parts)
+    {
+        $className = array_pop($parts);
+
+        preg_match_all("/[A-Z][a-z]+/", $className, $matches, PREG_PATTERN_ORDER);
+
+        return implode("_", $matches[0]);
     }
 }

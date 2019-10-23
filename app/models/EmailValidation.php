@@ -15,6 +15,17 @@ class EmailValidation extends BaseModel
 
     protected $status;
 
+    public function columnMap()
+    {
+        return [
+            'id' => 'id',
+            'user_id' => 'userId',
+            'status' => 'status',
+            'created_at' => 'createdAt',
+            'updated_at' => 'updatedAt'
+        ];
+    }
+
     /**
      * @return mixed
      */
@@ -40,5 +51,10 @@ class EmailValidation extends BaseModel
         }
 
         return new ValidEmail();
+    }
+
+    public static function findByUserId(int $id) : self
+    {
+        return self::findFirst("userId = {$id}");
     }
 }

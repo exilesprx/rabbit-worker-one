@@ -2,9 +2,9 @@
 
 namespace App\Events;
 
-trait UserEvent
+trait EmailEvent
 {
-    protected static $baseEventType = "user-update";
+    protected static $baseEventType = "email-validation";
 
     /**
      * @return string

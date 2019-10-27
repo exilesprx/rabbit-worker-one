@@ -9,17 +9,16 @@ use App\StateMachines\InvalidEmail;
 use App\StateMachines\ValidEmail;
 use App\Tasks\Task;
 use App\Tasks\TaskCollection;
-use App\Tasks\TaskConductor;
 
-class EmailValidation
+class EmailValidation extends Entity implements EventableEntityContract
 {
+    use ProducesEvents, RecordsEvents;
+
     private $id;
 
     private $userId;
 
     private $status;
-
-    private $tasks;
 
     public function __construct(int $id, int $userId, EmailValidationState $status)
     {
@@ -29,7 +28,7 @@ class EmailValidation
 
         $this->status = $status;
 
-        $this->tasks = new TaskCollection();
+        $this->events = new TaskCollection();
     }
 
     public function updateStatus(string $email)
@@ -38,7 +37,7 @@ class EmailValidation
 
             $this->transitionStatusTo(new InvalidEmail());
 
-            $this->tasks->addTask(
+            $this->recordTask(
                 new Task(
                     EmailInvalidated::getUblName(),
                     [
@@ -53,7 +52,7 @@ class EmailValidation
 
         $this->transitionStatusTo(new ValidEmail());
 
-        $this->tasks->addTask(
+        $this->recordTask(
             new Task(
                 EmailValidated::getUblName(),
                 [
@@ -74,16 +73,6 @@ class EmailValidation
     public function getStatus(): EmailValidationState
     {
         return $this->status;
-    }
-
-    public function hasTasks() : bool
-    {
-        return $this->tasks->hasTasks();
-    }
-
-    public function recordEvents(TaskConductor $conductor)
-    {
-        $conductor->executeTasks($this->tasks->flush());
     }
 
     private function transitionStatusTo(EmailValidationState $status)

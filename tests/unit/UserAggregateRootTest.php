@@ -84,7 +84,7 @@ class UserAggregateRootTest extends Unit
 
     public function testUserHasATaskAfterUpdatingEmail()
     {
-        $command = $this->generateUserUpdateEmailCommand(2);
+        $command = $this->generateUserUpdateEmailCommand();
         $this->user->updateUserEmail($command);
 
         $this->tester->assertTrue($this->user->hasTasks(), "User doesn't have tasks when it should.");
@@ -92,7 +92,7 @@ class UserAggregateRootTest extends Unit
 
     public function testUserHasUpdateEmailAndVersionWithAPendingTask()
     {
-        $command = $this->generateUserUpdateEmailCommand(2);
+        $command = $this->generateUserUpdateEmailCommand();
         $this->user->updateUserEmail($command);
         $data = $command->getData();
 
@@ -118,7 +118,7 @@ class UserAggregateRootTest extends Unit
 
     public function testTaskCollectionIsEmptyAfterRecordingEvents()
     {
-        $firstCommand = $this->generateUserUpdateEmailCommand(2);
+        $firstCommand = $this->generateUserUpdateEmailCommand();
         $this->user->updateUserEmail($firstCommand);
 
         $this->user->recordEvents($this->conductor);
@@ -151,13 +151,48 @@ class UserAggregateRootTest extends Unit
 
     public function testUserHasEmailStatusOfValid()
     {
-        $command = $this->generateUserUpdateEmailCommand(2);
+        $command = $this->generateUserUpdateEmailCommand();
         $this->user->updateUserEmail($command);
 
         $this->tester->assertTrue($this->user->isEmailValid());
     }
 
-    protected function generateUserUpdateEmailCommand(int $version) : UserUpdatedEmail
+    public function testSubEntityEventsAreFlushed()
+    {
+        $emailValidation = new EmailValidation(
+            1,
+            1,
+            new NewEmail()
+        );
+
+        $user = new User(
+            1,
+            $this->faker->email,
+            1,
+            $emailValidation
+        );
+
+        $command = new UserUpdatedEmail(
+            [
+                'uuid' => Uuid::uuid4(),
+                'payload' => [
+                    'user_id' => $user->getId(),
+                    'email' => $user->getEmail(),
+                    'version' => 2
+                ]
+            ]
+        );
+
+        $user->updateUserEmail($command);
+
+        $user->recordEvents($this->conductor);
+
+        $this->tester->assertFalse($emailValidation->hasTasks());
+
+        $this->tester->assertFalse($user->hasTasks());
+    }
+
+    protected function generateUserUpdateEmailCommand(int $version = 2) : UserUpdatedEmail
     {
         return new UserUpdatedEmail(
             [

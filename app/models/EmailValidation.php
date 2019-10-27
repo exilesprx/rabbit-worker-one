@@ -2,6 +2,11 @@
 
 namespace App\Models;
 
+use App\StateMachines\EmailValidationState;
+use App\StateMachines\InvalidEmail;
+use App\StateMachines\NewEmail;
+use App\StateMachines\ValidEmail;
+
 class EmailValidation extends BaseModel
 {
     protected $id;
@@ -9,6 +14,17 @@ class EmailValidation extends BaseModel
     protected $userId;
 
     protected $status;
+
+    public function columnMap()
+    {
+        return [
+            'id' => 'id',
+            'user_id' => 'userId',
+            'status' => 'status',
+            'created_at' => 'createdAt',
+            'updated_at' => 'updatedAt'
+        ];
+    }
 
     /**
      * @return mixed
@@ -26,11 +42,19 @@ class EmailValidation extends BaseModel
         return $this->userId;
     }
 
-    /**
-     * @return mixed
-     */
-    public function getStatus() : string
+    public function getStatus() : EmailValidationState
     {
-        return $this->status;
+        if (NewEmail::equals($this->status)) {
+            return new NewEmail();
+        } else if(InvalidEmail::equals($this->status)) {
+            return new InvalidEmail();
+        }
+
+        return new ValidEmail();
+    }
+
+    public static function findByUserId(int $id) : self
+    {
+        return self::findFirst("userId = {$id}");
     }
 }

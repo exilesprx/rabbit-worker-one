@@ -6,8 +6,11 @@ define('BASE_PATH', dirname(__DIR__));
 define('APP_PATH', BASE_PATH . '');
 
 use App\Amqp\Worker;
+use App\Events\EmailInvalidated;
+use App\Events\EmailValidated;
 use App\Events\UserEmailUpdated;
-use App\Events\UserUpdatedEmail;
+use App\Commands\UserUpdatedEmail;
+use App\Listeners\ListenerContract;
 use App\Listeners\UserTaskListener;
 use App\Loggers\AmqpLogger;
 use App\Loggers\LogStashLogger;
@@ -15,11 +18,14 @@ use App\Loggers\QueueLogger;
 use App\Models\EmailValidation;
 use App\Models\User;
 use App\Queue\Queue;
-use App\Repositories\EmailValidationRepository;
+use App\Reactors\EmailValidationReactor;
+use App\Reactors\Reactor;
+use App\Reactors\UserReactor;
 use App\Repositories\UserRepository;
-use App\Repositories\UserService;
 use App\Tasks\ProcessEventTask;
 use App\Tasks\TaskConductor;
+use App\ValueObjects\ListenerPriority;
+use App\ValueObjects\ReactorPriority;
 use Monolog\Formatter\LogstashFormatter;
 use Monolog\Handler\SocketHandler;
 use Monolog\Logger;
@@ -51,7 +57,7 @@ class ServiceProvider implements ServiceProviderInterface
             return include dirname(__DIR__) . "/Config/config.php";
         });
 
-        $config = $di->get('Config');
+        $config = $di->get('config');
 
         $this->di->setShared('db', function () use ($config) {
 
@@ -111,15 +117,9 @@ class ServiceProvider implements ServiceProviderInterface
 
         $eventsManager = $this->getEventsManager();
 
-        $this->registerEvents();
+        $this->registerCommands();
 
-        $this->di->setShared(
-            UserService::class,
-            new UserService(
-                new UserRepository(new User()),
-                new EmailValidationRepository(new EmailValidation())
-            )
-        );
+        $this->registerEvents();
 
         $this->di->setShared(
             TaskConductor::class,
@@ -133,10 +133,32 @@ class ServiceProvider implements ServiceProviderInterface
         );
 
         $this->di->setShared(
+            UserReactor::class,
+            function() use($di) {
+                return new UserReactor(
+                    $di->get(File::class)
+                );
+            }
+        );
+
+        $this->di->setShared(
+            EmailValidationReactor::class,
+            function() use($di) {
+                return new EmailValidationReactor(
+                    $di->get(File::class)
+                );
+            }
+        );
+
+        $this->di->setShared(
             UserTaskListener::class,
             function() use($di) {
                 return new UserTaskListener(
                     $di->get(File::class),
+                    new UserRepository(
+                        new User(),
+                        new EmailValidation()
+                    ),
                     $di->get(TaskConductor::class)
                 );
             }
@@ -205,11 +227,20 @@ class ServiceProvider implements ServiceProviderInterface
             foreach($listener::getEvents() as $event) {
                 $manager->attach(
                     $this->getEventName($event),
-                    $listener
-                    // TODO: Check instance of Projector/Reactor and set the priority based on the type.
+                    $listener,
+                    self::getListenerPriority($listener)
                 );
             }
         }
+    }
+
+    private static function getListenerPriority(ListenerContract $listener) : int
+    {
+        if ($listener instanceof Reactor) {
+            return ReactorPriority::toInteger();
+        }
+
+        return ListenerPriority::toInteger();
     }
 
     private function getEventName(string $event) : string
@@ -217,16 +248,29 @@ class ServiceProvider implements ServiceProviderInterface
         return ($event)::getBaseEventType();
     }
 
-    private function registerEvents()
+    private function registerCommands()
     {
         $this->di->set(
             UserUpdatedEmail::getUblName(),
             UserUpdatedEmail::class
         );
+    }
 
+    private function registerEvents()
+    {
         $this->di->set(
             UserEmailUpdated::getUblName(),
             UserEmailUpdated::class
+        );
+
+        $this->di->set(
+            EmailValidated::getUblName(),
+            EmailValidated::class
+        );
+
+        $this->di->set(
+            EmailInvalidated::getUblName(),
+            EmailInvalidated::class
         );
     }
 }

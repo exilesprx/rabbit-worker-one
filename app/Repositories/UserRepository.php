@@ -2,42 +2,80 @@
 
 namespace App\Repositories;
 
-use App\Models\User;
-use App\AggregateRoots\User as UserAR;
+use App\AggregateRoots\User;
+use App\Entities\EmailValidation;
+use App\Models\EmailValidation as EmailValidationModel;
+use App\Models\User as UserModel;
+use App\AggregateRoots\User as UserAggregateRoot;
+use App\StateMachines\EmailValidationState;
 
 class UserRepository
 {
-    private $model;
+    private $user;
 
-    public function __construct(User $model)
+    private $emailValidation;
+
+    public function __construct(UserModel $user, EmailValidationModel $emailValidation)
     {
-        $this->model = $model;
+        $this->user = $user;
+
+        $this->emailValidation = $emailValidation;
     }
 
-    public function findUserById(int $userId) : UserDto
+    public function findUserById(int $userId) : UserAggregateRoot
     {
-        /** @var User $user */
-        $user = $this->model::findFirst(
+        $user = $this->user::findFirst(
             [
                 'id' => $userId
             ]
         );
 
-        return UserDto::fromArray(
+        $validation = $this->findEmailValidationByUserId($userId);
+
+        return new User(
+            $user->getId(),
+            $user->getEmail(),
+            $user->getVersion(),
+            $validation
+        );
+    }
+
+    private function findEmailValidationByUserId(int $userId) : EmailValidation
+    {
+        $model = $this->emailValidation::findFirst(
             [
-                'id' => $user->getId(),
+                'user_id' => $userId
+            ]
+        );
+
+        return new EmailValidation(
+            $model->getId(),
+            $model->getUserId(),
+            $model->getStatus()
+        );
+    }
+
+    public function updateEmail(UserAggregateRoot $user)
+    {
+        $userModel = $this->user::findById($user->getId());
+
+        $userModel->update(
+            [
                 'email' => $user->getEmail(),
                 'version' => $user->getVersion()
             ]
         );
+
+        $this->updateEmailValidationStatus($user->getId(), $user->getEmailStatus());
     }
 
-    public function updateEmail(UserAR $user)
+    private function updateEmailValidationStatus(int $userId, EmailValidationState $state)
     {
-        $this->model->update(
+        $emailModel = $this->emailValidation::findByUserId($userId);
+
+        $emailModel->update(
             [
-                'email' => $user->getEmail(),
-                'version' => $user->getVersion()
+                'status' => (string)$state
             ]
         );
     }

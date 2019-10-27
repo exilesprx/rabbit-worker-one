@@ -2,23 +2,25 @@
 
 namespace App\Entities;
 
-use App\Repositories\EmailValidationRepository;
+use App\Events\EmailInvalidated;
+use App\Events\EmailValidated;
+use App\StateMachines\EmailValidationState;
+use App\StateMachines\InvalidEmail;
+use App\StateMachines\ValidEmail;
 use App\Tasks\Task;
 use App\Tasks\TaskCollection;
-use App\Tasks\TaskConductor;
-use Phalcon\Di;
 
-class EmailValidation
+class EmailValidation extends Entity implements EventableEntityContract
 {
+    use ProducesEvents, RecordsEvents;
+
     private $id;
 
     private $userId;
 
     private $status;
 
-    private $tasks;
-
-    public function __construct(int $id, int $userId, string $status)
+    public function __construct(int $id, int $userId, EmailValidationState $status)
     {
         $this->id = $id;
 
@@ -26,31 +28,18 @@ class EmailValidation
 
         $this->status = $status;
 
-        $this->tasks = new TaskCollection();
-    }
-
-    public static function getRepository() : EmailValidationRepository
-    {
-        return Di::getDefault()->get(EmailValidationRepository::class);
-    }
-
-    public function save()
-    {
-        /** @var EmailValidationRepository $repo */
-        $repo = self::getRepository();
-
-        $repo->updateStatus($this);
+        $this->events = new TaskCollection();
     }
 
     public function updateStatus(string $email)
     {
-        // TODO: Update the status to use a state machine.
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->status = "invalid";
 
-            $this->tasks->addTask(
+            $this->transitionStatusTo(new InvalidEmail());
+
+            $this->recordTask(
                 new Task(
-                    'email.invalid.validation',
+                    EmailInvalidated::getUblName(),
                     [
                         'email' => $email,
                         'user_id' => $this->userId
@@ -61,11 +50,11 @@ class EmailValidation
             return;
         }
 
-        $this->status = "valid";
+        $this->transitionStatusTo(new ValidEmail());
 
-        $this->tasks->addTask(
+        $this->recordTask(
             new Task(
-                'email.valid.validation',
+                EmailValidated::getUblName(),
                 [
                     'email' => $email,
                     'user_id' => $this->userId
@@ -78,21 +67,16 @@ class EmailValidation
 
     public function isValid() : bool
     {
-        return $this->status == "valid";
+        return $this->status instanceof ValidEmail;
     }
 
-    public function getStatus(): string
+    public function getStatus(): EmailValidationState
     {
         return $this->status;
     }
 
-    public function hasTasks() : bool
+    private function transitionStatusTo(EmailValidationState $status)
     {
-        return $this->tasks->hasTasks();
-    }
-
-    public function recordEvents(TaskConductor $conductor)
-    {
-        $conductor->executeTasks($this->tasks->flush());
+        $this->status = $this->status->transitionTo($status);
     }
 }

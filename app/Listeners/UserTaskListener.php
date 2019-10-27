@@ -2,14 +2,11 @@
 
 namespace App\Listeners;
 
-use App\Events\UserEmailUpdated;
-use App\Events\UserUpdatedEmail;
+use App\Commands\UserUpdatedEmail;
 use App\Repositories\UserRepository;
-use App\Store\Email;
 use App\Tasks\TaskConductor;
 use Phalcon\Events\Event;
 use Phalcon\Logger\Adapter\File as Logger;
-use Ramsey\Uuid\Uuid;
 
 class UserTaskListener extends Listener
 {
@@ -20,8 +17,7 @@ class UserTaskListener extends Listener
     protected $conductor;
 
     protected static $events = [
-        UserUpdatedEmail::class,
-        UserEmailUpdated::class
+        UserUpdatedEmail::class
     ];
 
     public function __construct(Logger $logger, UserRepository $repository, TaskConductor $conductor)
@@ -35,43 +31,22 @@ class UserTaskListener extends Listener
 
     /**
      * @param Event $event
-     * @param $task
+     * @param $component
+     * @param UserUpdatedEmail $command
      * @throws \App\Exceptions\InvalidUpdateException
      * @throws \App\Exceptions\OutOfOrderException
      */
-    public function onUserUpdatedEmail(Event $event, $task)
+    public function onUserUpdatedEmail(Event $event)
     {
-        // TODO: This should be moved to the TaskCollection class during the flush
-        $this->insertEvent($event->getData());
+        /** @var UserUpdatedEmail $command */
+        $command = $event->getData();
 
-        $userId = $event->getData()['id'];
+        $user = $this->repository->findUserById($command->getId());
 
-        $user = $this->repository->findUserById($userId);
-
-        $user->updateUserEmail($event);
+        $user->updateUserEmail($command);
 
         $user->recordEvents($this->conductor);
 
         $this->repository->updateEmail($user);
-    }
-
-    /**
-     * @param Event $event
-     */
-    public function onUserEmailUpdated(Event $event)
-    {
-        // TODO: Move to reactor
-    }
-
-    private function insertEvent(array $data)
-    {
-        $this->logger->alert(sprintf("Inserting email with version %d", $data['payload']['version']));
-
-        Email::with(
-            Uuid::fromString($data['uuid']),
-            $data['payload']['user_id'],
-            $data['payload']['version'],
-            $data['payload']['email']
-        )->save();
     }
 }

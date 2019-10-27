@@ -37,4 +37,9 @@ class User extends BaseModel
     {
         return $this->version;
     }
+
+    public static function findById(int $id) : self
+    {
+        return self::findFirst("id = {$id}");
+    }
 }

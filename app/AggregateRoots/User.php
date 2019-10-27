@@ -2,18 +2,23 @@
 
 namespace App\AggregateRoots;
 
+use App\Commands\UserUpdatedEmail;
 use App\Entities\EmailValidation;
+use App\Entities\Entity;
+use App\Entities\ProducesEvents;
+use App\Entities\RecordsEvents;
+use App\Entities\EventableEntityContract;
 use App\Events\UserEmailUpdated;
-use App\Events\UserUpdatedEmail;
 use App\Exceptions\InvalidUpdateException;
 use App\Exceptions\OutOfOrderException;
 use App\StateMachines\EmailValidationState;
 use App\Tasks\Task;
 use App\Tasks\TaskCollection;
-use App\Tasks\TaskConductor;
 
-class User
+class User extends Entity implements EventableEntityContract
 {
+    use ProducesEvents, RecordsEvents;
+
     private $id;
 
     private $email;
@@ -22,8 +27,6 @@ class User
 
     /** @var EmailValidation */
     private $emailValidation;
-
-    protected $tasks;
 
     public function __construct(int $id, string $email, int $version, EmailValidation $emailValidation)
     {
@@ -35,29 +38,27 @@ class User
 
         $this->emailValidation = $emailValidation;
 
-        $this->tasks = new TaskCollection();
+        $this->events = new TaskCollection();
     }
 
     public function updateUserEmail(UserUpdatedEmail $command)
     {
-        list($id, $email, $version) = array_values($command->getData());
-
-        if ($id != $this->id) {
+        if ($command->getId() != $this->id) {
             throw InvalidUpdateException::invalidEntityUpdate();
         }
 
-        if (!$this->isNextVersion($version)) {
-            throw OutOfOrderException::job($this->version, $version);
+        if (!$this->isNextVersion($command->getVersion())) {
+            throw OutOfOrderException::job($this->version, $command->getVersion());
         }
 
         // We've satisfied all business logic (not much here atm) so update the AR and add our events.
 
-        $this->version = $version;
-        $this->email = $email;
+        $this->version = $command->getVersion();
+        $this->email = $command->getEmail();
 
-        $this->emailValidation->updateStatus($email);
+        $this->emailValidation->updateStatus($command->getEmail());
 
-        $this->tasks->addTask(
+        $this->recordTask(
             new Task(
                 UserEmailUpdated::getUblName(),
                 $command->getData()
@@ -88,19 +89,6 @@ class User
     public function getEmailStatus() : EmailValidationState
     {
         return $this->emailValidation->getStatus();
-    }
-
-    public function recordEvents(TaskConductor $conductor)
-    {
-        $conductor->executeTasks($this->tasks->flush());
-
-        $this->emailValidation->recordEvents($conductor);
-    }
-
-    public function hasTasks() : bool
-    {
-        return $this->tasks->hasTasks()
-            || $this->emailValidation->hasTasks();
     }
 
     private function isNextVersion(int $nextVersion) : bool

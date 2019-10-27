@@ -2,22 +2,23 @@
 
 namespace App\Entities;
 
+use App\Events\EmailInvalidated;
+use App\Events\EmailValidated;
 use App\StateMachines\EmailValidationState;
 use App\StateMachines\InvalidEmail;
 use App\StateMachines\ValidEmail;
 use App\Tasks\Task;
 use App\Tasks\TaskCollection;
-use App\Tasks\TaskConductor;
 
-class EmailValidation
+class EmailValidation extends Entity implements EventableEntityContract
 {
+    use ProducesEvents, RecordsEvents;
+
     private $id;
 
     private $userId;
 
     private $status;
-
-    private $tasks;
 
     public function __construct(int $id, int $userId, EmailValidationState $status)
     {
@@ -27,17 +28,18 @@ class EmailValidation
 
         $this->status = $status;
 
-        $this->tasks = new TaskCollection();
+        $this->events = new TaskCollection();
     }
 
     public function updateStatus(string $email)
     {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+
             $this->transitionStatusTo(new InvalidEmail());
 
-            $this->tasks->addTask(
+            $this->recordTask(
                 new Task(
-                    'email.invalid.validation',
+                    EmailInvalidated::getUblName(),
                     [
                         'email' => $email,
                         'user_id' => $this->userId
@@ -50,9 +52,9 @@ class EmailValidation
 
         $this->transitionStatusTo(new ValidEmail());
 
-        $this->tasks->addTask(
+        $this->recordTask(
             new Task(
-                'email.valid.validation',
+                EmailValidated::getUblName(),
                 [
                     'email' => $email,
                     'user_id' => $this->userId
@@ -71,16 +73,6 @@ class EmailValidation
     public function getStatus(): EmailValidationState
     {
         return $this->status;
-    }
-
-    public function hasTasks() : bool
-    {
-        return $this->tasks->hasTasks();
-    }
-
-    public function recordEvents(TaskConductor $conductor)
-    {
-        $conductor->executeTasks($this->tasks->flush());
     }
 
     private function transitionStatusTo(EmailValidationState $status)

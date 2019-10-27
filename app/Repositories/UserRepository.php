@@ -57,24 +57,26 @@ class UserRepository
 
     public function updateEmail(UserAggregateRoot $user)
     {
-        $this->user->assign(
+        $userModel = $this->user::findById($user->getId());
+
+        $userModel->update(
             [
-                'id' => $user->getId(),
                 'email' => $user->getEmail(),
                 'version' => $user->getVersion()
             ]
-        )->save();
+        );
 
         $this->updateEmailValidationStatus($user->getId(), $user->getEmailStatus());
     }
 
     private function updateEmailValidationStatus(int $userId, EmailValidationState $state)
     {
-        $this->emailValidation->assign(
+        $emailModel = $this->emailValidation::findByUserId($userId);
+
+        $emailModel->update(
             [
-                'id' => $userId,
                 'status' => (string)$state
             ]
-        )->save();
+        );
     }
 }

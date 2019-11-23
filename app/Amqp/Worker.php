@@ -2,6 +2,7 @@
 
 namespace App\Amqp;
 
+use App\Entities\AmqpMessage as AmqpMessageEntity;
 use App\Entities\AmqpWorker;
 use App\Loggers\AmqpLogger;
 use App\Loggers\LogStashLogger;
@@ -81,30 +82,26 @@ class Worker
     {
         return function(AMQPMessage $message) {
 
-            $this->queue->putLowPriorityJob($message);
+            $message = self::parseMessage($message);
 
-            $channel = self::getChannelFromMessage($message);
+            $this->queue->putJob($message);
 
-            $deliveryTag = self::getDeliveryTagFromMessage($message);
+            $channel = $message->getChannel();
+
+            $deliveryTag = $message->getDeliveryTag();
 
             $channel->basic_ack($deliveryTag->getValue());
 
-            $this->logstash->info("Consumed-Event", self::parseMessage($message));
+            $this->logstash->info("Consumed-Event", $message->toArray());
         };
     }
 
-    private static function getChannelFromMessage(AMQPMessage $message) : AMQPChannel
+    private static function parseMessage(AMQPMessage $message) : AmqpMessageEntity
     {
-        return $message->delivery_info['channel'];
-    }
-
-    private static function getDeliveryTagFromMessage(AMQPMessage $message) : AmqpDeliveryTag
-    {
-        return new AmqpDeliveryTag($message->delivery_info['delivery_tag']);
-    }
-
-    private static function parseMessage(AMQPMessage $message) : array
-    {
-        return json_decode($message->body, true);
+        return new AmqpMessageEntity(
+            $message->body,
+            $message->delivery_info['channel'],
+            new AmqpDeliveryTag($message->delivery_info['delivery_tag'])
+        );
     }
 }

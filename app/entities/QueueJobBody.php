@@ -21,7 +21,7 @@ class QueueJobBody implements Arrayable
     {
         $id = $job->getId();
 
-        $payload = json_decode($job->getBody(), true);
+        $payload = $job->getBody();
 
         return new self($id, $payload);
     }

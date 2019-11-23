@@ -12,15 +12,15 @@ class BuriedJobPriority
      * @param OutOfOrderException $exception
      * @return int
      *
-     * Set the priority to H * D * M
+     * Set the priority to L + D * M
      *
      * Where:
-     *      H = HighPriorityJob value
+     *      L = LowPriorityJob value
      *      D = Difference between current version and next version
      *      M = Multiplier
      */
     public static function getValue(OutOfOrderException $exception) : int
     {
-        return HighPriorityJob::getValue() * $exception->getDifference() * self::$multiplier;
+        return LowPriorityJob::getValue() + $exception->getVersion() * self::$multiplier;
     }
 }

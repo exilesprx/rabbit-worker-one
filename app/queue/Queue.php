@@ -10,10 +10,10 @@ use App\Tasks\Task;
 use App\Tasks\TaskConductor;
 use App\ValueObjects\BeanstalkTube;
 use App\ValueObjects\BuriedJobPriority;
-use App\ValueObjects\LowPriorityJob;
+use App\ValueObjects\DefaultJobPriority;
 use App\ValueObjects\QueueStandardTimeout;
 use Phalcon\Queue\Beanstalk;
-use PhpAmqpLib\Message\AMQPMessage;
+use App\Entities\AmqpMessage;
 
 class Queue
 {
@@ -45,12 +45,12 @@ class Queue
         $this->beanstalk->choose((string)$tube);
     }
 
-    public function putLowPriorityJob(AMQPMessage $message)
+    public function putJob(AMQPMessage $message)
     {
         $this->beanstalk->put(
-            $message->body,
+            $message->getBody(),
             [
-                'priority' => LowPriorityJob::getValue()
+                'priority' => DefaultJobPriority::getValue($message->getVersion())
             ]
         );
     }
@@ -70,7 +70,7 @@ class Queue
 
                 $this->workBuriedJobsOfSameType($body);
             } catch (OutOfOrderException $exception) {
-                $this->logger->critical($exception->getMessage());
+//                $this->logger->critical($exception->getMessage());
 
                 /**
                  * Initial jobs have a LowPriorityJob value, therefore;
@@ -78,7 +78,7 @@ class Queue
                  */
                 $job->bury(BuriedJobPriority::getValue($exception));
 
-                $this->logger->critical(sprintf("Kicked job into buried queue with priority of %d", BuriedJobPriority::getValue($exception)));
+//                $this->logger->critical(sprintf("Kicked job into buried queue with priority of %d", BuriedJobPriority::getValue($exception)));
 
                 continue;
             }
@@ -96,7 +96,7 @@ class Queue
             $body = QueueJobBody::from($job);
 
             if ($body->isSameType($queueJobBody)) {
-                $this->logger->alert(sprintf("Kicking job version %d of type %s back into queue for reprocessing.", $body->getVersion(), $body->getType()));
+//                $this->logger->alert(sprintf("Kicking job version %d of type %s back into queue for reprocessing.", $body->getVersion(), $body->getType()));
 
                 $job->kick();
             }

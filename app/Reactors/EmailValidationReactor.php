@@ -28,7 +28,7 @@ class EmailValidationReactor extends Listener implements ListenerContract, React
         /** @var EmailValidated $domainEvent */
         $domainEvent = $event->getData();
 
-        $this->logger->debug("Email validated", $domainEvent->getData());
+        // $this->logger->debug("Email validated", $domainEvent->getData());
     }
 
     public function onEmailInvalidated(Event $event)
@@ -36,6 +36,6 @@ class EmailValidationReactor extends Listener implements ListenerContract, React
         /** @var EmailInvalidated $domainEvent */
         $domainEvent = $event->getData();
 
-        $this->logger->debug("Email invalidated", $domainEvent->getData());
+        // $this->logger->debug("Email invalidated", $domainEvent->getData());
     }
 }

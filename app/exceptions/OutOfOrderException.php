@@ -30,4 +30,9 @@ class OutOfOrderException extends Exception
     {
         return abs($this->currentVersion - $this->receivedVersion);
     }
+
+    public function getVersion() : int
+    {
+        return $this->receivedVersion;
+    }
 }

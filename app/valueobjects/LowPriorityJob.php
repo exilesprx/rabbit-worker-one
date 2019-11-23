@@ -4,7 +4,7 @@ namespace App\ValueObjects;
 
 class LowPriorityJob implements JobPriority
 {
-    private static $value = 10000;
+    private static $value = 100;
 
     public static function getValue() : int
     {
